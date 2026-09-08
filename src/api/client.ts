@@ -55,3 +55,31 @@ export async function request<T>(
 
   return data as T;
 }
+
+// Envio de arquivo (multipart). Não define Content-Type — o fetch monta o
+// boundary sozinho a partir do FormData; só injeta o token de auth.
+export async function uploadRequest<T>(
+  path: string,
+  formData: FormData
+): Promise<T> {
+  const headers: Record<string, string> = {};
+  if (authToken) headers.Authorization = `Bearer ${authToken}`;
+
+  const response = await fetch(`${API_URL}${path}`, {
+    method: 'POST',
+    headers,
+    body: formData,
+  });
+
+  const data = await parseBody(response);
+
+  if (!response.ok) {
+    const message =
+      (data && typeof data === 'object' && (data.message ?? data.error)) ||
+      `Erro ${response.status}`;
+    if (response.status === 401) unauthorizedHandler?.();
+    throw new ApiError(response.status, message);
+  }
+
+  return data as T;
+}

@@ -1,9 +1,14 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useLocalSearchParams } from 'expo-router';
+import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { router, useLocalSearchParams } from 'expo-router';
 import { useMemo } from 'react';
-import { ScrollView, StyleSheet, View } from 'react-native';
 
-import { useSpeciesList, useUser, useUserAchievements } from '@/api/hooks';
+import {
+  useSpeciesList,
+  useUser,
+  useUserAchievements,
+  useUserCatches,
+} from '@/api/hooks';
 import type { Species } from '@/api/types';
 import { Avatar } from '@/components/avatar';
 import { Screen } from '@/components/screen';
@@ -14,6 +19,7 @@ import { XpBar } from '@/components/xp-bar';
 import { FloatingTabBarSpace, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { formatMonthYear } from '@/utils/format';
+import { photoUri } from '@/utils/photo';
 
 export default function UserProfileScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -21,6 +27,7 @@ export default function UserProfileScreen() {
   const { data: user, isLoading, isError, refetch } = useUser(id);
   const { data: achievements } = useUserAchievements(id);
   const { data: species } = useSpeciesList();
+  const { data: userCatches } = useUserCatches(id);
 
   const speciesById = useMemo(() => {
     const map: Record<string, Species> = {};
@@ -100,6 +107,34 @@ export default function UserProfileScreen() {
             </ThemedText>
           )}
 
+          {userCatches && userCatches.length > 0 && (
+            <>
+              <ThemedText type="subtitle" style={styles.section}>
+                Capturas
+              </ThemedText>
+              <View style={styles.photoGrid}>
+                {userCatches.map(item => {
+                  const s = speciesById[item.speciesId];
+                  return (
+                    <Pressable
+                      key={item.id}
+                      style={styles.photoCell}
+                      onPress={() => router.push(`/catch/${item.id}`)}
+                      accessibilityRole="button"
+                      accessibilityLabel={`Ver captura de ${s?.name ?? 'espécie'}`}>
+                      <Stripes
+                        tone={(s?.tone as Tone) ?? (['#0a3d4a', '#073040'] as Tone)}
+                        imageUrl={photoUri(item.photoUrl)}
+                        radius={12}
+                        style={styles.photo}
+                      />
+                    </Pressable>
+                  );
+                })}
+              </View>
+            </>
+          )}
+
           <ThemedText type="subtitle" style={styles.section}>
             Capturas por espécie
           </ThemedText>
@@ -155,4 +190,7 @@ const styles = StyleSheet.create({
   badge: { width: 40, height: 40, borderRadius: 13, alignItems: 'center', justifyContent: 'center' },
   thumb: { width: 40, height: 40 },
   empty: { marginTop: 8 },
+  photoGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 10 },
+  photoCell: { width: '31.5%', aspectRatio: 1 },
+  photo: { flex: 1 },
 });

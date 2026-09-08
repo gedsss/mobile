@@ -1,3 +1,4 @@
+import { useQueryClient } from '@tanstack/react-query';
 import { router } from 'expo-router';
 import { useMemo, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
@@ -12,6 +13,7 @@ import { ThemedText } from '@/components/themed-text';
 import { DifficultyLabels, ReactionMeta } from '@/constants/theme';
 import { useRarity, useTheme } from '@/hooks/use-theme';
 import { formatCatchMeta, formatRelativeDate } from '@/utils/format';
+import { photoUri } from '@/utils/photo';
 
 function Glyph({ color, glyph, size = 8 }: { color: string; glyph: number | string; size?: number }) {
   return (
@@ -29,6 +31,7 @@ function Glyph({ color, glyph, size = 8 }: { color: string; glyph: number | stri
 export function FeedPostCard({ item }: { item: FeedCatch }) {
   const theme = useTheme();
   const rarity = useRarity();
+  const queryClient = useQueryClient();
   const speciesMap = useSpeciesMap();
   const species = speciesMap[item.speciesId];
 
@@ -50,14 +53,19 @@ export function FeedPostCard({ item }: { item: FeedCatch }) {
   const total = Object.values(counts).reduce((a, b) => a + (b ?? 0), 0);
   const activeMeta = mine ? ReactionMeta[mine] : null;
 
+  const syncFeed = () => {
+    queryClient.invalidateQueries({ queryKey: ['feed'] });
+    queryClient.invalidateQueries({ queryKey: ['catch', item.id] });
+  };
+
   const react = (code: ReactionEmoji) => {
     setPickerOpen(false);
     if (mine === code) {
       setMine(null);
-      reactionsApi.removeReaction(item.id).catch(() => {});
+      reactionsApi.removeReaction(item.id).then(syncFeed).catch(() => {});
     } else {
       setMine(code);
-      reactionsApi.react(item.id, code).catch(() => {});
+      reactionsApi.react(item.id, code).then(syncFeed).catch(() => {});
     }
   };
 
@@ -104,7 +112,7 @@ export function FeedPostCard({ item }: { item: FeedCatch }) {
         onPress={() => router.push(`/species/${item.speciesId}`)}
         accessibilityRole="button"
         accessibilityLabel={`Ver ${species?.name ?? 'espécie'}`}>
-        <Stripes tone={tone} style={styles.image}>
+        <Stripes tone={tone} imageUrl={photoUri(item.photoUrl)} style={styles.image}>
           <View style={styles.imageScrim} pointerEvents="none" />
           {item.isNewSpecies && (
             <View style={styles.newBadge}>
