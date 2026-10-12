@@ -1,29 +1,42 @@
 import { Ionicons } from '@expo/vector-icons';
+import { useQuery } from '@tanstack/react-query';
+import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
-import { type ReactNode, useMemo } from 'react';
-import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { type ComponentProps, useMemo } from 'react';
+import { Alert, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import * as friendshipsApi from '@/api/friendships';
 import { useAchievementCatalog, useMe, useMyCatches, useSpeciesList, useUserAchievements } from '@/api/hooks';
 import type { Species } from '@/api/types';
 import { useAuth } from '@/auth/auth-context';
 import { Avatar } from '@/components/avatar';
-import { Screen } from '@/components/screen';
-import { Stripes, type Tone } from '@/components/stripes';
+import { RarityPill } from '@/components/badge';
 import { ErrorView, LoadingView } from '@/components/states';
 import { ThemedText } from '@/components/themed-text';
 import { XpBar } from '@/components/xp-bar';
-import { FloatingTabBarSpace, Spacing } from '@/constants/theme';
+import { BrandGradient, FloatingTabBarSpace, HeadingFont, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
-import { formatCatchMeta, formatMonthYear, formatShortDate } from '@/utils/format';
+import { formatMonthYear, formatWeight } from '@/utils/format';
+
+type IconName = ComponentProps<typeof Ionicons>['name'];
+
+const ACH_ICON: Record<string, IconName> = {
+  FIRST_CATCH: 'fish',
+  TEN_SPECIES: 'albums',
+  FIRST_LEGENDARY: 'trophy',
+};
 
 export default function ProfileScreen() {
   const theme = useTheme();
+  const insets = useSafeAreaInsets();
   const { signOut } = useAuth();
   const { data: me, isLoading, isError, refetch } = useMe();
   const { data: unlocked } = useUserAchievements(me?.id);
   const { data: catalog } = useAchievementCatalog();
   const { data: myCatches } = useMyCatches();
   const { data: species } = useSpeciesList();
+  const { data: friendships } = useQuery({ queryKey: ['friendships'], queryFn: friendshipsApi.listFriendships });
 
   const speciesById = useMemo(() => {
     const map: Record<string, Species> = {};
@@ -31,191 +44,200 @@ export default function ProfileScreen() {
     return map;
   }, [species]);
 
-  if (isLoading) {
-    return <LoadingView label="Carregando perfil…" />;
-  }
+  if (isLoading) return <LoadingView label="Carregando perfil…" />;
   if (isError || !me) return <ErrorView onRetry={refetch} />;
 
-  const totalCatches = myCatches?.length ?? 0;
+  const catches = myCatches ?? [];
+  const totalCatches = catches.length;
   const distinctSpecies = me.catchesBySpecies.length;
-  const rareCaught = me.catchesBySpecies.filter(e => {
-    const d = speciesById[e.speciesId]?.difficulty;
-    return d === 'EPIC' || d === 'LEGENDARY';
-  }).length;
-  const legendaryCaught = me.catchesBySpecies.filter(
-    e => speciesById[e.speciesId]?.difficulty === 'LEGENDARY'
-  ).length;
+  const biggest = catches.reduce<number | null>((m, c) => (c.lengthCm != null && (m == null || c.lengthCm > m) ? c.lengthCm : m), null);
+  const legendaryCaught = me.catchesBySpecies.filter(e => speciesById[e.speciesId]?.difficulty === 'LEGENDARY').length;
+  const friendsCount = friendships?.friends.length ?? 0;
 
   const unlockedByCode = new Map((unlocked ?? []).map(a => [a.code, a]));
-  const progressFor: Record<string, string> = {
-    FIRST_CATCH: `${Math.min(totalCatches, 1)}/1`,
-    TEN_SPECIES: `${Math.min(distinctSpecies, 10)}/10`,
-    FIRST_LEGENDARY: `${Math.min(legendaryCaught, 1)}/1`,
+  const progressFor: Record<string, [number, number]> = {
+    FIRST_CATCH: [Math.min(totalCatches, 1), 1],
+    TEN_SPECIES: [Math.min(distinctSpecies, 10), 10],
+    FIRST_LEGENDARY: [Math.min(legendaryCaught, 1), 1],
   };
 
-  const diary = (myCatches ?? []).map(c => ({
-    ...c,
-    name: speciesById[c.speciesId]?.name ?? 'Espécie',
-    tone: (speciesById[c.speciesId]?.tone as Tone) ?? (['#0a3d4a', '#073040'] as Tone),
-  }));
+  const confirmSignOut = () =>
+    Alert.alert('Sair da conta?', 'Você precisará entrar de novo para registrar capturas.', [
+      { text: 'Cancelar', style: 'cancel' },
+      { text: 'Sair', style: 'destructive', onPress: signOut },
+    ]);
 
   return (
-    <ScreenScroll>
-      <View style={[styles.band, { backgroundColor: theme.headerBackground }]}>
-        <View style={styles.bandTop}>
-          <View style={styles.avatarWrap}>
-            <Avatar name={me.username} size={66} shape="square" tone={me.avatarTone as Tone} ring={theme.accent} />
-            <View style={[styles.nvBadge, { backgroundColor: theme.accent }]}>
-              <ThemedText type="monoSmall" style={{ color: '#05161b' }}>
-                Nv {me.level}
-              </ThemedText>
-            </View>
-          </View>
-          <View style={styles.flex}>
-            <ThemedText type="title">{me.username}</ThemedText>
-            <ThemedText type="monoSmall" themeColor="textSecondary">
-              {me.handle ?? '@' + me.username} · desde {me.memberSince ? formatMonthYear(me.memberSince) : '—'}
-            </ThemedText>
-          </View>
-          <Pressable
-            onPress={signOut}
-            style={[styles.logout, { backgroundColor: 'rgba(255,255,255,0.09)', borderColor: 'rgba(255,255,255,0.12)' }]}
-            accessibilityRole="button">
-            <ThemedText type="caption" themeColor="onDark">
-              Sair
-            </ThemedText>
+    <ScrollView style={{ backgroundColor: theme.background }} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+      <LinearGradient colors={BrandGradient} start={{ x: 0, y: 0 }} end={{ x: 0.6, y: 1 }} style={[styles.hero, { paddingTop: insets.top + Spacing.sm }]}>
+        <View style={styles.heroActions}>
+          <Pressable onPress={() => router.push('/friends')} style={styles.glassBtn} accessibilityRole="button" accessibilityLabel={`Amigos, ${friendsCount}`}>
+            <Ionicons name="people" size={20} color="#fff" />
+            <ThemedText style={styles.glassText}>Amigos {friendsCount}</ThemedText>
+          </Pressable>
+          <Pressable onPress={confirmSignOut} style={[styles.glassBtn, styles.glassIcon]} accessibilityRole="button" accessibilityLabel="Sair da conta">
+            <Ionicons name="log-out-outline" size={22} color="#fff" />
           </Pressable>
         </View>
-
+        <View style={styles.identity}>
+          <View style={[styles.avatarRing, { borderColor: theme.accent }]}>
+            <Avatar name={me.username} size={76} level={me.level} />
+          </View>
+          <View style={styles.flex}>
+            <ThemedText type="heading" style={styles.onDark} numberOfLines={1}>
+              {me.username}
+            </ThemedText>
+            <ThemedText type="caption" style={styles.onDarkSoft}>
+              {me.handle ?? `@${me.username}`}
+              {me.memberSince ? ` · desde ${formatMonthYear(me.memberSince)}` : ''}
+            </ThemedText>
+          </View>
+        </View>
         <View style={styles.xp}>
-          <XpBar xp={me.xp} />
+          <XpBar xp={me.xp} onDark />
         </View>
+      </LinearGradient>
 
-        <View style={styles.stats}>
-          {[
-            { value: String(totalCatches), label: 'capturas' },
-            { value: `${distinctSpecies}/${species?.length ?? 0}`, label: 'espécies' },
-            { value: String(rareCaught), label: 'raros' },
-          ].map(stat => (
-            <View key={stat.label} style={[styles.statCard, { backgroundColor: 'rgba(255,255,255,0.08)', borderColor: 'rgba(255,255,255,0.08)' }]}>
-              <ThemedText type="title" style={styles.statValue}>
-                {stat.value}
-              </ThemedText>
-              <ThemedText type="caption" themeColor="onDarkSecondary">
-                {stat.label}
-              </ThemedText>
-            </View>
-          ))}
-        </View>
+      <View style={styles.stats}>
+        {[
+          { value: String(totalCatches), label: 'CAPTURAS' },
+          { value: `${distinctSpecies}`, label: `DE ${species?.length ?? 0} ESPÉCIES` },
+          { value: biggest != null ? `${biggest} cm` : '—', label: 'MAIOR PEIXE' },
+        ].map(stat => (
+          <View key={stat.label} style={[styles.stat, { backgroundColor: theme.backgroundElement, boxShadow: `inset 0 0 0 2px ${theme.border}, 0 4px 0 ${theme.border}` }]}>
+            <ThemedText style={styles.statValue}>{stat.value}</ThemedText>
+            <ThemedText type="monoSmall" style={styles.center}>
+              {stat.label}
+            </ThemedText>
+          </View>
+        ))}
       </View>
 
-      <View style={styles.body}>
-        <ThemedText type="subtitle">Conquistas</ThemedText>
-        <View style={styles.achList}>
-          {(catalog ?? []).map(ach => {
-            const done = unlockedByCode.get(ach.code);
+      <View style={styles.section}>
+        <ThemedText type="title" accessibilityRole="header">
+          Conquistas <ThemedText type="title" themeColor="textSecondary">{unlockedByCode.size}/{catalog?.length ?? 0}</ThemedText>
+        </ThemedText>
+      </View>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.achRow}>
+        {(catalog ?? []).map(ach => {
+          const done = unlockedByCode.has(ach.code);
+          const [cur, goal] = progressFor[ach.code] ?? [done ? 1 : 0, 1];
+          return (
+            <View
+              key={ach.code}
+              accessible
+              accessibilityLabel={`${ach.name}: ${done ? 'desbloqueada' : `${cur} de ${goal}`}`}
+              style={[styles.ach, { backgroundColor: theme.backgroundElement, boxShadow: `inset 0 0 0 2px ${theme.border}, 0 4px 0 ${theme.border}` }]}>
+              {done ? (
+                <LinearGradient colors={['#ffd54a', '#ff9a1f']} style={styles.medal}>
+                  <Ionicons name={ACH_ICON[ach.code] ?? 'ribbon'} size={22} color="#3b2000" />
+                </LinearGradient>
+              ) : (
+                <View style={[styles.medal, { backgroundColor: theme.backgroundSelected }]}>
+                  <Ionicons name={ACH_ICON[ach.code] ?? 'ribbon'} size={22} color={theme.textSecondary} />
+                </View>
+              )}
+              <ThemedText type="subtitle" numberOfLines={2}>
+                {ach.name}
+              </ThemedText>
+              {ach.description && (
+                <ThemedText type="caption" themeColor="textSecondary" numberOfLines={2} style={styles.achDesc}>
+                  {ach.description}
+                </ThemedText>
+              )}
+              <View style={[styles.achTrack, { backgroundColor: theme.backgroundSelected }]}>
+                <View style={{ width: `${(cur / goal) * 100}%`, height: '100%', backgroundColor: done ? theme.success : theme.primary }} />
+              </View>
+              <ThemedText style={styles.achCount}>{done ? 'Desbloqueada' : `${cur}/${goal}`}</ThemedText>
+            </View>
+          );
+        })}
+      </ScrollView>
+
+      <View style={[styles.section, styles.diaryHead]}>
+        <ThemedText type="title" accessibilityRole="header">
+          Diário de capturas
+        </ThemedText>
+        <Pressable onPress={() => router.push('/(tabs)/collection')} style={styles.link} accessibilityRole="button">
+          <ThemedText type="link">Ver coleção</ThemedText>
+        </Pressable>
+      </View>
+      <View style={styles.diary}>
+        {catches.length === 0 ? (
+          <ThemedText type="body" themeColor="textSecondary">
+            Você ainda não registrou nenhuma captura.
+          </ThemedText>
+        ) : (
+          catches.map(c => {
+            const s = speciesById[c.speciesId];
+            const d = new Date(c.capturedAt);
+            const meta = [c.lengthCm != null && `${c.lengthCm} cm`, c.weightGrams != null && formatWeight(c.weightGrams), c.locationName]
+              .filter(Boolean)
+              .join(' · ');
             return (
-              <View
-                key={ach.code}
-                style={[styles.achRow, { backgroundColor: theme.backgroundElement, borderColor: theme.border, opacity: done ? 1 : 0.55 }]}>
-                <View style={[styles.achBadge, { backgroundColor: done ? theme.accent : theme.backgroundSelected }]}>
-                  <Ionicons name={done ? 'trophy' : 'lock-closed'} size={16} color={done ? '#05161b' : theme.textFaint} />
+              <Pressable
+                key={c.id}
+                onPress={() => router.push(`/species/${c.speciesId}`)}
+                style={[styles.entry, { backgroundColor: theme.backgroundElement, boxShadow: `inset 0 0 0 2px ${theme.border}` }]}
+                accessibilityRole="button">
+                <View style={[styles.date, { backgroundColor: theme.backgroundSelected }]}>
+                  <ThemedText style={styles.day}>{String(d.getDate()).padStart(2, '0')}</ThemedText>
+                  <ThemedText type="monoSmall">{d.toLocaleDateString('pt-BR', { month: 'short' }).replace('.', '').toUpperCase()}</ThemedText>
                 </View>
                 <View style={styles.flex}>
-                  <ThemedText type="bodyBold">{ach.name}</ThemedText>
-                  {ach.description && (
-                    <ThemedText type="caption" themeColor="textSecondary">
-                      {ach.description}
+                  <View style={styles.entryTitle}>
+                    <ThemedText type="subtitle" numberOfLines={1} style={styles.shrink}>
+                      {s?.name ?? 'Espécie'}
+                    </ThemedText>
+                    {s && <RarityPill difficulty={s.difficulty} size="sm" />}
+                  </View>
+                  {meta.length > 0 && (
+                    <ThemedText type="caption" themeColor="textSecondary" numberOfLines={1}>
+                      {meta}
                     </ThemedText>
                   )}
                 </View>
-                <ThemedText type="monoSmall" style={{ color: done ? theme.success : theme.textFaint }}>
-                  {done ? `DESBLOQUEADA · ${formatShortDate(done.unlockedAt)}` : progressFor[ach.code] ?? ''}
-                </ThemedText>
-              </View>
-            );
-          })}
-        </View>
-
-        <View style={styles.diaryHeader}>
-          <ThemedText type="subtitle">Diário de pesca</ThemedText>
-          <Pressable onPress={() => router.push('/(tabs)/collection')} hitSlop={8}>
-            <ThemedText type="caption" style={{ color: theme.primary }}>
-              Ver coleção
-            </ThemedText>
-          </Pressable>
-        </View>
-        <View style={styles.diaryList}>
-          {diary.length === 0 ? (
-            <ThemedText type="body" themeColor="textSecondary">
-              Você ainda não registrou nenhuma captura.
-            </ThemedText>
-          ) : (
-            diary.map(entry => (
-              <Pressable
-                key={entry.id}
-                onPress={() => router.push(`/species/${entry.speciesId}`)}
-                style={[styles.diaryRow, { backgroundColor: theme.backgroundElement, borderColor: theme.border }]}
-                accessibilityRole="button">
-                <Stripes tone={entry.tone} radius={13} style={styles.diaryThumb} />
-                <View style={styles.flex}>
-                  <ThemedText type="subtitle" style={styles.diaryName}>
-                    {entry.name}
-                  </ThemedText>
-                  <ThemedText type="caption" themeColor="textSecondary">
-                    {entry.locationName ?? 'Local não informado'}
-                  </ThemedText>
-                  <ThemedText type="monoSmall" themeColor="textFaint">
-                    {formatCatchMeta(entry)}
-                  </ThemedText>
-                </View>
-                <ThemedText type="monoSmall" style={{ color: theme.primary }}>
-                  +{entry.xpAwarded}xp
-                </ThemedText>
+                <ThemedText style={[styles.entryXp, { color: theme.textSecondary }]}>+{c.xpAwarded}</ThemedText>
               </Pressable>
-            ))
-          )}
-        </View>
+            );
+          })
+        )}
       </View>
-    </ScreenScroll>
-  );
-}
-
-function ScreenScroll({ children }: { children: ReactNode }) {
-  return (
-    <Screen padded={false} topColor="headerBackground">
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        {children}
-      </ScrollView>
-    </Screen>
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
   flex: { flex: 1, minWidth: 0 },
+  shrink: { flexShrink: 1 },
+  center: { textAlign: 'center' },
   content: { paddingBottom: FloatingTabBarSpace + Spacing.xl },
-  band: {
-    paddingHorizontal: Spacing.md + 4,
-    paddingTop: Spacing.sm,
-    paddingBottom: Spacing.lg,
-    borderBottomLeftRadius: 26,
-    borderBottomRightRadius: 26,
-  },
-  bandTop: { flexDirection: 'row', alignItems: 'center', gap: 14 },
-  avatarWrap: { alignItems: 'center' },
-  nvBadge: { marginTop: -8, paddingHorizontal: 8, paddingVertical: 2, borderRadius: 999 },
-  logout: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 12, borderWidth: 1 },
-  xp: { marginTop: 20 },
-  stats: { flexDirection: 'row', gap: 9, marginTop: 16 },
-  statCard: { flex: 1, borderWidth: 1, borderRadius: 15, padding: 11 },
-  statValue: { fontSize: 19, lineHeight: 22 },
-  body: { paddingHorizontal: Spacing.md + 2, paddingTop: 18 },
-  achList: { marginTop: 10, gap: 9 },
-  achRow: { flexDirection: 'row', alignItems: 'center', gap: 12, borderWidth: 1, borderRadius: 18, padding: 12 },
-  achBadge: { width: 40, height: 40, borderRadius: 13, alignItems: 'center', justifyContent: 'center' },
-  diaryHeader: { marginTop: 22, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  diaryList: { marginTop: 10, gap: 9 },
-  diaryRow: { flexDirection: 'row', alignItems: 'center', gap: 11, borderWidth: 1, borderRadius: 18, padding: 10 },
-  diaryThumb: { width: 54, height: 54 },
-  diaryName: { fontSize: 15.5, lineHeight: 19 },
+  hero: { paddingHorizontal: 20, paddingBottom: 22, borderBottomLeftRadius: 32, borderBottomRightRadius: 32, gap: 14 },
+  heroActions: { flexDirection: 'row', justifyContent: 'flex-end', gap: 8 },
+  glassBtn: { flexDirection: 'row', alignItems: 'center', gap: 8, minHeight: 44, paddingHorizontal: 14, borderRadius: 15, backgroundColor: 'rgba(255,255,255,0.14)' },
+  glassIcon: { width: 44, paddingHorizontal: 0, justifyContent: 'center' },
+  glassText: { color: '#fff', fontFamily: HeadingFont, fontSize: 15, lineHeight: 20 },
+  identity: { flexDirection: 'row', alignItems: 'center', gap: 16 },
+  avatarRing: { borderWidth: 3, borderRadius: 30, padding: 3 },
+  onDark: { color: '#ffffff' },
+  onDarkSoft: { color: '#d6d0ff' },
+  xp: { marginTop: 2 },
+  stats: { flexDirection: 'row', gap: 10, paddingHorizontal: 20, marginTop: 18 },
+  stat: { flex: 1, alignItems: 'center', paddingVertical: 12, paddingHorizontal: 6, borderRadius: 16, marginBottom: 4 },
+  statValue: { fontFamily: HeadingFont, fontSize: 24, lineHeight: 28 },
+  section: { paddingHorizontal: 20, marginTop: 22 },
+  achRow: { gap: 12, paddingHorizontal: 20, paddingTop: 12, paddingBottom: 8 },
+  ach: { width: 160, padding: 12, borderRadius: 20, gap: 6 },
+  medal: { width: 44, height: 44, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
+  achDesc: { minHeight: 36 },
+  achTrack: { height: 8, borderRadius: 4, overflow: 'hidden' },
+  achCount: { fontFamily: HeadingFont, fontSize: 14, lineHeight: 18 },
+  diaryHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  link: { minHeight: 44, justifyContent: 'center' },
+  diary: { paddingHorizontal: 20, gap: 10, marginTop: 6 },
+  entry: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 10, borderRadius: 18 },
+  date: { width: 46, height: 52, borderRadius: 13, alignItems: 'center', justifyContent: 'center' },
+  day: { fontFamily: HeadingFont, fontSize: 20, lineHeight: 22 },
+  entryTitle: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  entryXp: { fontFamily: HeadingFont, fontSize: 15, lineHeight: 20 },
 });

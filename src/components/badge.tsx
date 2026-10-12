@@ -1,80 +1,67 @@
-import { StyleSheet, View } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
+import { StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 
 import type { Difficulty } from '@/api/types';
 import { ThemedText } from '@/components/themed-text';
-import { DifficultyLabels, Radius, Spacing, type Habitat } from '@/constants/theme';
+import { DifficultyLabels, DifficultyStars, type Habitat } from '@/constants/theme';
 import { useHabitat, useRarity } from '@/hooks/use-theme';
 
-export function DifficultyBadge({ difficulty }: { difficulty: Difficulty }) {
-  const rarity = useRarity();
-  const { color } = rarity[difficulty];
-  return (
-    <View style={[styles.badge, { backgroundColor: `${color}22`, borderColor: color }]}>
-      <View style={[styles.dot, { backgroundColor: color }]} />
-      <ThemedText type="monoSmall" style={{ color }}>
-        {DifficultyLabels[difficulty]}
-      </ThemedText>
-    </View>
+// Pill de raridade: cor sólida + rótulo escrito + estrelas (opcional) — a
+// raridade nunca depende só da cor. Lendário usa o gradiente dourado.
+export function RarityPill({
+  difficulty,
+  stars = false,
+  size = 'md',
+  style,
+}: {
+  difficulty: Difficulty;
+  stars?: boolean;
+  size?: 'sm' | 'md';
+  style?: StyleProp<ViewStyle>;
+}) {
+  const r = useRarity()[difficulty];
+  const label = DifficultyLabels[difficulty] + (stars ? ` ${'★'.repeat(DifficultyStars[difficulty])}` : '');
+  const box = [styles.pill, size === 'sm' && styles.pillSm, style];
+  const text = (
+    <ThemedText style={[styles.pillText, size === 'sm' && styles.pillTextSm, { color: r.onColor }]}>{label}</ThemedText>
   );
+
+  if (r.frame) {
+    return (
+      <LinearGradient colors={['#ffd54a', '#ff9a1f']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={box}>
+        {text}
+      </LinearGradient>
+    );
+  }
+  return <View style={[box, { backgroundColor: r.color }]}>{text}</View>;
 }
 
-export function RarityTag({ difficulty }: { difficulty: Difficulty }) {
-  const rarity = useRarity();
-  const { color } = rarity[difficulty];
-  return (
-    <View style={[styles.tag, { backgroundColor: color }]}>
-      <ThemedText type="monoSmall" style={styles.tagInk}>
-        {DifficultyLabels[difficulty]}
-      </ThemedText>
-    </View>
-  );
-}
+// Compat com telas antigas.
+export const DifficultyBadge = RarityPill;
+export const RarityTag = RarityPill;
 
 export function HabitatChip({ habitat }: { habitat: Habitat }) {
-  const habitatPalette = useHabitat();
-  const tone = habitatPalette[habitat];
+  const tone = useHabitat()[habitat];
   return (
     <View style={[styles.habitat, { backgroundColor: tone.bg }]}>
-      <ThemedText type="caption" style={{ color: tone.ink }}>
-        {habitat === 'Doce' ? 'Água doce' : 'Água salgada'}
-      </ThemedText>
-    </View>
-  );
-}
-
-export function Badge({ label, color }: { label: string; color: string }) {
-  return (
-    <View style={[styles.badge, { backgroundColor: `${color}22`, borderColor: color }]}>
-      <ThemedText type="caption" style={{ color }}>
-        {label}
+      <ThemedText type="monoSmall" style={{ color: tone.ink }}>
+        {habitat === 'Doce' ? 'ÁGUA DOCE' : 'ÁGUA SALGADA'}
       </ThemedText>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  badge: {
+  pill: {
+    alignSelf: 'flex-start',
     flexDirection: 'row',
     alignItems: 'center',
-    gap: Spacing.xs,
-    alignSelf: 'flex-start',
-    paddingHorizontal: Spacing.sm,
-    paddingVertical: 4,
-    borderRadius: Radius.sm,
-    borderWidth: 1,
+    paddingHorizontal: 9,
+    minHeight: 24,
+    borderRadius: 999,
   },
-  dot: { width: 6, height: 6, borderRadius: 3 },
-  tag: {
-    alignSelf: 'flex-start',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 7,
-  },
-  tagInk: { color: '#05161b' },
-  habitat: {
-    alignSelf: 'flex-start',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 7,
-  },
+  pillSm: { paddingHorizontal: 7, minHeight: 20 },
+  pillText: { fontSize: 12, lineHeight: 16, fontWeight: '800', letterSpacing: 0.6 },
+  pillTextSm: { fontSize: 11, lineHeight: 14 },
+  habitat: { alignSelf: 'flex-start', paddingHorizontal: 8, minHeight: 22, justifyContent: 'center', borderRadius: 8 },
 });

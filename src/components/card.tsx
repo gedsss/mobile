@@ -1,19 +1,24 @@
 import { type ReactNode } from 'react';
-import { StyleSheet, View, type ViewStyle } from 'react-native';
+import { StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 
 import { Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 
+// Superfície padrão: borda de 2px em `border` + degrau sólido de 4px.
 export function Card({
   children,
   style,
   borderColor,
+  flat = false,
 }: {
   children: ReactNode;
-  style?: ViewStyle | ViewStyle[];
+  style?: StyleProp<ViewStyle>;
   borderColor?: string;
+  // Sem degrau (para listas densas).
+  flat?: boolean;
 }) {
   const theme = useTheme();
+  const ring = borderColor ?? theme.border;
 
   return (
     <View
@@ -21,7 +26,8 @@ export function Card({
         styles.card,
         {
           backgroundColor: theme.backgroundElement,
-          borderColor: borderColor ?? theme.border,
+          boxShadow: flat ? `inset 0 0 0 2px ${ring}` : `inset 0 0 0 2px ${ring}, 0 4px 0 ${ring}`,
+          marginBottom: flat ? 0 : 4,
         },
         style,
       ]}>
@@ -31,9 +37,5 @@ export function Card({
 }
 
 const styles = StyleSheet.create({
-  card: {
-    borderRadius: Radius.card,
-    borderWidth: 1.5,
-    padding: Spacing.md,
-  },
+  card: { borderRadius: Radius.xl, padding: Spacing.md },
 });

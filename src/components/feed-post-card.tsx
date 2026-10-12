@@ -1,3 +1,4 @@
+import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useMemo, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
@@ -7,24 +8,12 @@ import { useSpeciesMap } from '@/api/hooks';
 import type { FeedCatch, ReactionEmoji } from '@/api/types';
 import { REACTION_EMOJIS } from '@/api/types';
 import { Avatar } from '@/components/avatar';
-import { Stripes, type Tone } from '@/components/stripes';
+import { RarityPill } from '@/components/badge';
+import { FishArt } from '@/components/fish-art';
 import { ThemedText } from '@/components/themed-text';
-import { DifficultyLabels, ReactionMeta } from '@/constants/theme';
+import { HeadingFont, ReactionMeta } from '@/constants/theme';
 import { useRarity, useTheme } from '@/hooks/use-theme';
-import { formatCatchMeta, formatRelativeDate } from '@/utils/format';
-
-function Glyph({ color, glyph, size = 8 }: { color: string; glyph: number | string; size?: number }) {
-  return (
-    <View
-      style={{
-        width: size,
-        height: size,
-        borderRadius: glyph === 999 ? size / 2 : Number(glyph),
-        backgroundColor: color,
-      }}
-    />
-  );
-}
+import { formatRelativeDate, formatWeight } from '@/utils/format';
 
 export function FeedPostCard({ item }: { item: FeedCatch }) {
   const theme = useTheme();
@@ -44,164 +33,132 @@ export function FeedPostCard({ item }: { item: FeedCatch }) {
     return base;
   }, [item.reactionCounts, item.myReaction, mine]);
 
-  const ordered = REACTION_EMOJIS.filter(code => (counts[code] ?? 0) > 0).sort(
-    (a, b) => (counts[b] ?? 0) - (counts[a] ?? 0)
-  );
-  const total = Object.values(counts).reduce((a, b) => a + (b ?? 0), 0);
-  const activeMeta = mine ? ReactionMeta[mine] : null;
+  // Mostra as reações com contagem (mais usadas primeiro) e sempre a minha.
+  const shown = REACTION_EMOJIS.filter(code => (counts[code] ?? 0) > 0 || code === mine)
+    .sort((a, b) => (counts[b] ?? 0) - (counts[a] ?? 0))
+    .slice(0, 3);
+  if (shown.length === 0) shown.push('FIRE');
 
   const react = (code: ReactionEmoji) => {
     setPickerOpen(false);
     if (mine === code) {
       setMine(null);
-      reactionsApi.removeReaction(item.id).catch(() => {});
+      reactionsApi.removeReaction(item.id).catch(() => setMine(code));
     } else {
+      const previous = mine;
       setMine(code);
-      reactionsApi.react(item.id, code).catch(() => {});
+      reactionsApi.react(item.id, code).catch(() => setMine(previous));
     }
   };
 
-  const r = species ? rarity[species.difficulty] : rarity.EASY;
-  const tone = (species?.tone as Tone) ?? ['#123', '#0b2831'];
-  const relative = formatRelativeDate(item.capturedAt);
-  const metaChips = [item.locationName, relative, formatCatchMeta(item)].filter(Boolean) as string[];
+  const ringColor = species ? rarity[species.difficulty].color : theme.border;
+  const measures = [item.lengthCm != null && `${item.lengthCm} cm`, item.weightGrams != null && formatWeight(item.weightGrams)].filter(
+    Boolean
+  ) as string[];
+  const meta = [formatRelativeDate(item.capturedAt), item.locationName].filter(Boolean).join(' · ');
 
   return (
-    <View style={[styles.card, { backgroundColor: theme.backgroundElement, borderColor: r.border }]}>
+    <View style={[styles.card, { backgroundColor: theme.backgroundElement, boxShadow: `inset 0 0 0 2px ${theme.border}, 0 5px 0 ${theme.border}` }]}>
       <View style={styles.authorRow}>
-        <Avatar
-          name={item.authorUsername ?? '?'}
-          size={38}
-          shape="square"
-          tone={(item.authorAvatarTone as Tone) ?? undefined}
-          ring={item.mine ? theme.accent : 'rgba(255,255,255,0.5)'}
-        />
+        <Avatar name={item.authorUsername ?? '?'} size={44} level={item.authorLevel} />
         <View style={styles.flex}>
-          <View style={styles.nameRow}>
-            <ThemedText type="bodyBold" numberOfLines={1}>
-              {item.authorUsername ?? 'Amigo'}
-            </ThemedText>
-            <View style={[styles.nvBadge, { backgroundColor: theme.background }]}>
-              <ThemedText type="monoSmall" themeColor="textSecondary">
-                NV {item.authorLevel ?? 1}
-              </ThemedText>
-            </View>
-          </View>
-          <ThemedText type="monoSmall" themeColor="textFaint">
-            {relative}
+          <ThemedText type="bodyBold" numberOfLines={1}>
+            {item.mine ? 'Você' : (item.authorUsername ?? 'Amigo')}
+          </ThemedText>
+          <ThemedText type="caption" themeColor="textSecondary" numberOfLines={1}>
+            {meta}
           </ThemedText>
         </View>
-        {item.mine && (
-          <View style={styles.youTag}>
-            <ThemedText type="monoSmall" style={{ color: '#63d6ab' }}>
-              VOCÊ
-            </ThemedText>
-          </View>
-        )}
+      </View>
+
+      <View style={styles.titleRow}>
+        <ThemedText type="body">Capturou um </ThemedText>
+        <ThemedText type="subtitle">{species?.name ?? 'peixe'}</ThemedText>
+        {species && <RarityPill difficulty={species.difficulty} size="sm" />}
       </View>
 
       <Pressable
         onPress={() => router.push(`/species/${item.speciesId}`)}
         accessibilityRole="button"
-        accessibilityLabel={`Ver ${species?.name ?? 'espécie'}`}>
-        <Stripes tone={tone} style={styles.image}>
-          <View style={styles.imageScrim} pointerEvents="none" />
+        accessibilityLabel={`Ver ficha de ${species?.name ?? 'espécie'}`}>
+        <FishArt
+          difficulty={species?.difficulty ?? 'EASY'}
+          imageUrl={item.photoUrl || null}
+          iconSize={120}
+          radius={18}
+          style={[styles.photo, { boxShadow: `inset 0 0 0 3px ${ringColor}` }]}>
           {item.isNewSpecies && (
-            <View style={styles.newBadge}>
-              <ThemedText type="monoSmall" style={{ color: '#05161b' }}>
-                NOVA ESPÉCIE
-              </ThemedText>
+            <View style={[styles.newTag, { backgroundColor: theme.primary, boxShadow: `0 3px 0 ${theme.primaryLip}` }]}>
+              <ThemedText style={[styles.tagText, { color: theme.primaryText }]}>NOVA ESPÉCIE</ThemedText>
             </View>
           )}
-          <View style={styles.imageFooter}>
-            <View style={styles.flex}>
-              <View style={styles.rarityRow}>
-                <View style={[styles.rarityDot, { backgroundColor: r.color }]} />
-                <ThemedText type="monoSmall" style={{ color: 'rgba(255,255,255,0.75)' }}>
-                  {species ? DifficultyLabels[species.difficulty] : ''}
-                </ThemedText>
-              </View>
-              <ThemedText type="title" style={styles.species}>
-                {species?.name ?? 'Espécie'}
-              </ThemedText>
-              {species?.scientificName && (
-                <ThemedText type="caption" style={styles.sci}>
-                  {species.scientificName}
-                </ThemedText>
-              )}
-            </View>
-            <View style={styles.xpBadge}>
-              <ThemedText type="monoSmall" style={{ color: '#04202a' }}>
-                +{item.xpAwarded}xp
-              </ThemedText>
-            </View>
+          <View style={[styles.xpTag, { backgroundColor: theme.accent }]}>
+            <ThemedText style={[styles.tagText, { color: theme.accentText }]}>+{item.xpAwarded} XP</ThemedText>
           </View>
-        </Stripes>
+          {measures.length > 0 && (
+            <View style={styles.measures}>
+              {measures.map(m => (
+                <View key={m} style={[styles.measure, { backgroundColor: theme.backgroundElement }]}>
+                  <ThemedText style={styles.measureText}>{m}</ThemedText>
+                </View>
+              ))}
+            </View>
+          )}
+        </FishArt>
       </Pressable>
 
-      <View style={styles.metaRow}>
-        {metaChips.map((chip, i) => (
-          <View key={i} style={[styles.metaChip, { backgroundColor: theme.background }]}>
-            <ThemedText type="caption" themeColor="textSecondary">
-              {chip}
-            </ThemedText>
-          </View>
-        ))}
-      </View>
-
       <View style={styles.reactRow}>
-        <View style={styles.reactDots}>
-          {ordered.slice(0, 3).map((code, i) => (
-            <View
+        {shown.map(code => {
+          const on = mine === code;
+          const meta = ReactionMeta[code];
+          return (
+            <Pressable
               key={code}
-              style={[styles.reactDotWrap, { backgroundColor: ReactionMeta[code].color }, i > 0 && { marginLeft: -7 }]}>
-              <Glyph color="rgba(5,22,27,0.55)" glyph={ReactionMeta[code].glyph} />
-            </View>
-          ))}
-        </View>
-        <ThemedText type="caption" themeColor="textSecondary" style={styles.flex} numberOfLines={1}>
-          {total} {total === 1 ? 'reação' : 'reações'}
-          {activeMeta ? ` · você reagiu ${activeMeta.label.toLowerCase()}` : ''}
-        </ThemedText>
+              onPress={() => react(code)}
+              accessibilityRole="button"
+              accessibilityState={{ selected: on }}
+              accessibilityLabel={`${meta.label}, ${counts[code] ?? 0} reações`}
+              style={[
+                styles.rx,
+                on
+                  ? { backgroundColor: theme.primary, boxShadow: `0 3px 0 ${theme.primaryLip}` }
+                  : { backgroundColor: theme.backgroundSelected },
+              ]}>
+              <Ionicons name={meta.icon} size={18} color={on ? theme.primaryText : meta.color} />
+              <ThemedText style={[styles.rxText, { color: on ? theme.primaryText : theme.text }]}>{counts[code] ?? 0}</ThemedText>
+            </Pressable>
+          );
+        })}
         <Pressable
           onPress={() => setPickerOpen(o => !o)}
-          style={[
-            styles.reactBtn,
-            {
-              backgroundColor: activeMeta ? activeMeta.color : theme.backgroundSelected,
-              borderColor: activeMeta ? 'transparent' : theme.border,
-            },
-          ]}
-          accessibilityRole="button">
-          <ThemedText type="bodyBold" style={{ color: activeMeta ? '#05161b' : theme.text }}>
-            {activeMeta ? activeMeta.label : 'Reagir'}
-          </ThemedText>
+          accessibilityRole="button"
+          accessibilityLabel={pickerOpen ? 'Fechar reações' : 'Escolher reação'}
+          style={[styles.rx, styles.rxAdd, { backgroundColor: theme.backgroundSelected }]}>
+          <Ionicons name={pickerOpen ? 'close' : 'happy-outline'} size={20} color={theme.text} />
         </Pressable>
       </View>
 
       {pickerOpen && (
         <View style={styles.picker}>
-          {REACTION_EMOJIS.map(code => (
-            <Pressable
-              key={code}
-              onPress={() => react(code)}
-              style={[
-                styles.pickerOption,
-                {
-                  backgroundColor: mine === code ? 'rgba(255,196,77,0.16)' : theme.background,
-                  borderColor: mine === code ? theme.accent : theme.border,
-                },
-              ]}
-              accessibilityRole="button"
-              accessibilityLabel={ReactionMeta[code].label}>
-              <View style={[styles.pickerGlyph, { backgroundColor: ReactionMeta[code].color }]}>
-                <Glyph color="rgba(5,22,27,0.55)" glyph={ReactionMeta[code].glyph} size={6} />
-              </View>
-              <ThemedText type="caption" themeColor="text">
-                {ReactionMeta[code].label}
-              </ThemedText>
-            </Pressable>
-          ))}
+          {REACTION_EMOJIS.map(code => {
+            const meta = ReactionMeta[code];
+            const on = mine === code;
+            return (
+              <Pressable
+                key={code}
+                onPress={() => react(code)}
+                accessibilityRole="button"
+                accessibilityState={{ selected: on }}
+                accessibilityLabel={meta.label}
+                style={[
+                  styles.option,
+                  { backgroundColor: theme.backgroundElement, boxShadow: `inset 0 0 0 2px ${on ? theme.primary : theme.border}` },
+                ]}>
+                <Ionicons name={meta.icon} size={18} color={meta.color} />
+                <ThemedText type="label">{meta.label}</ThemedText>
+              </Pressable>
+            );
+          })}
         </View>
       )}
     </View>
@@ -210,35 +167,20 @@ export function FeedPostCard({ item }: { item: FeedCatch }) {
 
 const styles = StyleSheet.create({
   flex: { flex: 1, minWidth: 0 },
-  card: { borderWidth: 1.5, borderRadius: 22, overflow: 'hidden' },
-  authorRow: { flexDirection: 'row', alignItems: 'center', gap: 11, paddingHorizontal: 14, paddingTop: 12, paddingBottom: 10 },
-  nameRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  nvBadge: { paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6 },
-  youTag: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8, backgroundColor: '#0c352c' },
-  image: { width: '100%', aspectRatio: 1.32 },
-  imageScrim: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(5,22,27,0.32)' },
-  newBadge: { position: 'absolute', top: 10, right: 10, backgroundColor: '#ffc44d', paddingHorizontal: 9, paddingVertical: 4, borderRadius: 8 },
-  imageFooter: { position: 'absolute', left: 14, right: 14, bottom: 12, flexDirection: 'row', alignItems: 'flex-end', gap: 10 },
-  rarityRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  rarityDot: { width: 7, height: 7, borderRadius: 4 },
-  species: { color: '#fff', fontSize: 20, lineHeight: 23 },
-  sci: { color: 'rgba(255,255,255,0.7)', fontStyle: 'italic' },
-  xpBadge: { backgroundColor: 'rgba(255,138,61,0.92)', paddingHorizontal: 9, paddingVertical: 5, borderRadius: 9 },
-  metaRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 7, paddingHorizontal: 14, paddingTop: 11 },
-  metaChip: { paddingHorizontal: 9, paddingVertical: 4, borderRadius: 9 },
-  reactRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 14, paddingVertical: 12 },
-  reactDots: { flexDirection: 'row' },
-  reactDotWrap: {
-    width: 23,
-    height: 23,
-    borderRadius: 12,
-    borderWidth: 2,
-    borderColor: '#fff',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  reactBtn: { paddingHorizontal: 12, paddingVertical: 7, borderRadius: 11, borderWidth: 1 },
-  picker: { flexDirection: 'row', flexWrap: 'wrap', gap: 7, paddingHorizontal: 14, paddingBottom: 14 },
-  pickerOption: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 11, paddingVertical: 7, borderRadius: 11, borderWidth: 1 },
-  pickerGlyph: { width: 16, height: 16, borderRadius: 8, alignItems: 'center', justifyContent: 'center' },
+  card: { borderRadius: 24, padding: 12, gap: 10, marginBottom: 5 },
+  authorRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  titleRow: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 4 },
+  photo: { height: 200 },
+  newTag: { position: 'absolute', left: 12, top: 12, borderRadius: 10, paddingHorizontal: 10, minHeight: 28, justifyContent: 'center', transform: [{ rotate: '-4deg' }] },
+  xpTag: { position: 'absolute', right: 12, top: 12, borderRadius: 10, paddingHorizontal: 10, minHeight: 28, justifyContent: 'center' },
+  tagText: { fontFamily: HeadingFont, fontSize: 14, lineHeight: 18 },
+  measures: { position: 'absolute', left: 12, bottom: 12, flexDirection: 'row', gap: 6 },
+  measure: { borderRadius: 10, paddingHorizontal: 10, minHeight: 28, justifyContent: 'center' },
+  measureText: { fontFamily: HeadingFont, fontSize: 15, lineHeight: 20 },
+  reactRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 2 },
+  rx: { flexDirection: 'row', alignItems: 'center', gap: 6, minHeight: 44, paddingHorizontal: 12, borderRadius: 14 },
+  rxAdd: { marginLeft: 'auto', width: 44, paddingHorizontal: 0, justifyContent: 'center' },
+  rxText: { fontFamily: HeadingFont, fontSize: 15, lineHeight: 20 },
+  picker: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  option: { flexDirection: 'row', alignItems: 'center', gap: 6, minHeight: 44, paddingHorizontal: 12, borderRadius: 14 },
 });
