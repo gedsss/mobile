@@ -1,4 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
+import { Image } from 'expo-image';
 import { router, useLocalSearchParams } from 'expo-router';
 import { type ReactNode } from 'react';
 import { type DimensionValue, Pressable, ScrollView, Share, StyleSheet, View } from 'react-native';
@@ -14,6 +15,8 @@ import { HeadingFont, Spacing } from '@/constants/theme';
 import { useRarity, useTheme } from '@/hooks/use-theme';
 import { formatShortDate, formatWeight } from '@/utils/format';
 import { dexNumber } from '@/utils/species';
+import brazilMap from '@/assets/images/brasil.svg';
+import brazilOutline from '@/assets/images/brasil-contorno.svg';
 
 const ARTIFICIAL = /artificial|plug|colher|jig|zara|h[ée]lice|spinner|superf[ií]cie|frog|sapinho|stick|crank|soft|shad/i;
 
@@ -43,6 +46,11 @@ export default function SpeciesDetailScreen() {
     species.averageSizeCm != null && { label: 'Tamanho médio', value: `${species.averageSizeCm} cm` },
     species.diet && { label: 'Dieta', value: species.diet },
   ].filter(Boolean) as { label: string; value: string }[];
+
+  const techniques = species.techniques ?? [];
+  const closedSeasons = species.closedSeasons ?? [];
+  const hasTips = !!species.bestTime || techniques.length > 0;
+  const cardStyle = { backgroundColor: theme.backgroundElement, boxShadow: `inset 0 0 0 2px ${theme.border}` };
 
   const share = () =>
     Share.share({ message: `${species.name} (${species.scientificName ?? ''}) — ${dexNumber(index)} na minha FishDex` }).catch(() => {});
@@ -141,36 +149,85 @@ export default function SpeciesDetailScreen() {
           </Section>
         )}
 
+        {hasTips && (
+          <Section title="Como pescar" aside={species.tipsReviewed ? undefined : 'Dicas em revisão'}>
+            <View style={[styles.infoCard, cardStyle]}>
+              {species.bestTime && (
+                <View style={styles.region}>
+                  <Ionicons name="time" size={18} color={r.color} />
+                  <View style={styles.flex}>
+                    <ThemedText type="caption" themeColor="textSecondary">
+                      Melhor horário
+                    </ThemedText>
+                    <ThemedText type="label">{species.bestTime}</ThemedText>
+                  </View>
+                </View>
+              )}
+              {techniques.map(technique => (
+                <View key={technique} style={styles.region}>
+                  <Ionicons name="checkmark-circle" size={18} color={r.color} />
+                  <ThemedText type="label" style={styles.flex}>
+                    {technique}
+                  </ThemedText>
+                </View>
+              ))}
+            </View>
+          </Section>
+        )}
+
+        {closedSeasons.length > 0 && (
+          <Section title="Defeso">
+            <View style={[styles.infoCard, cardStyle]}>
+              {closedSeasons.map(item => (
+                <View key={`${item.region}-${item.period}`} style={styles.closedSeason}>
+                  <View style={styles.region}>
+                    <Ionicons name="calendar" size={18} color={r.color} />
+                    <ThemedText type="label" style={styles.flex}>
+                      {item.region}
+                    </ThemedText>
+                  </View>
+                  <View style={[styles.period, { backgroundColor: theme.backgroundSelected }]}>
+                    <ThemedText type="caption" style={styles.bold}>
+                      {item.period}
+                    </ThemedText>
+                  </View>
+                  <ThemedText type="caption" themeColor="textSecondary" style={styles.indent}>
+                    {item.rule}
+                  </ThemedText>
+                </View>
+              ))}
+              <View style={styles.region}>
+                <Ionicons name="information-circle" size={18} color={theme.textSecondary} />
+                <ThemedText type="caption" themeColor="textSecondary" style={styles.flex}>
+                  Regras de defeso mudam por estado e todo ano — confirme na portaria do IBAMA ou do órgão ambiental do seu estado.
+                </ThemedText>
+              </View>
+            </View>
+          </Section>
+        )}
+
         {species.regions && species.regions.length > 0 && (
           <Section title="Onde ocorre">
             <View style={[styles.mapCard, { backgroundColor: theme.backgroundElement, boxShadow: `inset 0 0 0 2px ${theme.border}` }]}>
-              <View style={[styles.map, { backgroundColor: theme.backgroundSelected }]} accessibilityLabel={`Mapa com ${species.mapPins?.length ?? 0} pontos de ocorrência`}>
-                {[20, 40, 60, 80].map(p => (
-                  <View key={`h${p}`} style={[styles.gridH, { top: `${p}%`, backgroundColor: theme.border }]} />
-                ))}
-                {[20, 40, 60, 80].map(p => (
-                  <View key={`v${p}`} style={[styles.gridV, { left: `${p}%`, backgroundColor: theme.border }]} />
-                ))}
-                {(species.mapPins ?? []).map(pin => (
-                  <View key={pin.label} style={[styles.pin, { left: pin.x as DimensionValue, top: pin.y as DimensionValue }]}>
-                    <View style={[styles.pinLabel, { backgroundColor: theme.text }]}>
-                      <ThemedText type="monoSmall" style={{ color: theme.background }}>
-                        {pin.label}
-                      </ThemedText>
+              <View style={[styles.mapArea, { backgroundColor: theme.backgroundSelected }]}>
+                <View style={styles.map} accessibilityLabel={`Mapa do Brasil com ${species.mapPins?.length ?? 0} pontos de ocorrência`}>
+                  <Image source={brazilMap} contentFit="fill" tintColor={theme.textSecondary} style={[StyleSheet.absoluteFill, styles.mapLand]} />
+                  <Image source={brazilOutline} contentFit="fill" tintColor={theme.textSecondary} style={StyleSheet.absoluteFill} />
+                  {(species.mapPins ?? []).map(pin => (
+                    <View key={pin.label} style={[styles.pin, { left: pin.x as DimensionValue, top: pin.y as DimensionValue }]}>
+                      <View style={[styles.pinDot, { backgroundColor: r.color, boxShadow: `0 0 0 2px ${theme.backgroundElement}, 0 0 8px ${r.color}` }]}>
+                        <ThemedText style={styles.pinNumber}>{pin.label}</ThemedText>
+                      </View>
                     </View>
-                    <View
-                      style={[
-                        styles.pinDot,
-                        { backgroundColor: r.color, boxShadow: `0 0 0 3px ${theme.backgroundElement}, 0 0 10px ${r.color}` },
-                      ]}
-                    />
-                  </View>
-                ))}
+                  ))}
+                </View>
               </View>
               <View style={styles.regions}>
-                {species.regions.map(region => (
+                {species.regions.map((region, i) => (
                   <View key={region.name} style={styles.region}>
-                    <Ionicons name="location" size={18} color={r.color} />
+                    <View style={[styles.regionNumber, { backgroundColor: r.color }]}>
+                      <ThemedText style={styles.pinNumber}>{i + 1}</ThemedText>
+                    </View>
                     <ThemedText type="label" style={styles.flex}>
                       {region.name}
                     </ThemedText>
@@ -290,15 +347,20 @@ const styles = StyleSheet.create({
   bait: { width: '48%', flexGrow: 1, flexDirection: 'row', alignItems: 'center', gap: 10, padding: 10, borderRadius: 16 },
   baitIcon: { width: 36, height: 36, borderRadius: 11, alignItems: 'center', justifyContent: 'center' },
   mapCard: { marginTop: 12, borderRadius: 20, overflow: 'hidden' },
-  map: { height: 170, margin: 4, borderRadius: 16, overflow: 'hidden' },
-  gridH: { position: 'absolute', left: 0, right: 0, height: 1, opacity: 0.8 },
-  gridV: { position: 'absolute', top: 0, bottom: 0, width: 1, opacity: 0.8 },
-  pin: { position: 'absolute', alignItems: 'center', gap: 4, transform: [{ translateX: -20 }, { translateY: -34 }] },
-  pinLabel: { paddingHorizontal: 7, paddingVertical: 2, borderRadius: 7 },
-  pinDot: { width: 14, height: 14, borderRadius: 7 },
+  mapArea: { margin: 4, borderRadius: 16, padding: 14, alignItems: 'center' },
+  map: { width: '100%', maxWidth: 300, aspectRatio: 403 / 401 },
+  mapLand: { opacity: 0.25 },
+  pin: { position: 'absolute', width: 0, height: 0 },
+  pinDot: { position: 'absolute', left: -9, top: -9, width: 18, height: 18, borderRadius: 9, alignItems: 'center', justifyContent: 'center' },
+  pinNumber: { color: '#ffffff', fontSize: 11, lineHeight: 14, fontWeight: '800' },
+  regionNumber: { width: 22, height: 22, borderRadius: 11, alignItems: 'center', justifyContent: 'center' },
   regions: { padding: 14, gap: 10 },
   region: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   season: { borderRadius: 999, paddingHorizontal: 10, minHeight: 26, justifyContent: 'center' },
+  infoCard: { marginTop: 12, borderRadius: 20, padding: 14, gap: 14 },
+  closedSeason: { gap: 6 },
+  period: { alignSelf: 'flex-start', marginLeft: 26, borderRadius: 999, paddingHorizontal: 10, minHeight: 24, justifyContent: 'center' },
+  indent: { marginLeft: 26 },
   records: { marginTop: 12, gap: 10 },
   record: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 10, borderRadius: 18 },
   recordThumb: { width: 64, height: 64 },

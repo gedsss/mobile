@@ -43,23 +43,6 @@ export const MOCK_SPECIES: Species[] = [
     ],
   }),
   species({
-    id: 'sp-betta',
-    name: 'Betta',
-    scientificName: 'Betta splendens',
-    family: 'Osphronemidae',
-    difficulty: 'EASY',
-    baseXp: 10,
-    habitat: 'Doce',
-    averageSizeCm: 7,
-    diet: 'Insetívoro',
-    tone: ['#42264d', '#341e3d'],
-    description:
-      'Peixe de aquário originário de arrozais da Tailândia. Respira ar atmosférico pelo labirinto — dispensa aeração forte.',
-    baits: ['Larva de mosquito', 'Ração em flocos'],
-    regions: [{ name: 'Bacia do Mekong', season: 'aquarismo' }],
-    mapPins: [{ x: '66%', y: '42%', label: 'Mekong' }],
-  }),
-  species({
     id: 'sp-tambaqui',
     name: 'Tambaqui',
     scientificName: 'Colossoma macropomum',
@@ -80,29 +63,6 @@ export const MOCK_SPECIES: Species[] = [
     mapPins: [
       { x: '38%', y: '32%', label: 'AM' },
       { x: '46%', y: '58%', label: 'MS' },
-    ],
-  }),
-  species({
-    id: 'sp-peixe-palhaco',
-    name: 'Peixe-palhaço',
-    scientificName: 'Amphiprion ocellaris',
-    family: 'Pomacentridae',
-    difficulty: 'MEDIUM',
-    baseXp: 30,
-    habitat: 'Salgada',
-    averageSizeCm: 9,
-    diet: 'Omnívoro',
-    tone: ['#6d3c1d', '#5a3118'],
-    description:
-      'Vive em simbiose com anêmonas de recife. Em aquário marinho, precisa de rocha viva e parâmetros estáveis.',
-    baits: ['Artêmia', 'Ração marinha'],
-    regions: [
-      { name: 'Indo-Pacífico', season: 'ano todo' },
-      { name: 'Grande Barreira', season: 'ano todo' },
-    ],
-    mapPins: [
-      { x: '70%', y: '46%', label: 'Indo-Pac.' },
-      { x: '78%', y: '66%', label: 'AU' },
     ],
   }),
   species({
@@ -197,29 +157,6 @@ export const MOCK_SPECIES: Species[] = [
     mapPins: [
       { x: '50%', y: '74%', label: 'Sul' },
       { x: '58%', y: '56%', label: 'RJ' },
-    ],
-  }),
-  species({
-    id: 'sp-garoupa',
-    name: 'Garoupa',
-    scientificName: 'Epinephelus marginatus',
-    family: 'Serranidae',
-    difficulty: 'EPIC',
-    baseXp: 65,
-    habitat: 'Salgada',
-    averageSizeCm: 100,
-    diet: 'Carnívoro',
-    tone: ['#3e3120', '#32281a'],
-    description:
-      'Territorial, vive em lajes e naufrágios profundos. Recolhimento imediato evita que ela se enfie na pedra.',
-    baits: ['Lula', 'Peixe cortado', 'Jig de fundo'],
-    regions: [
-      { name: 'Lajes de SP/RJ', season: 'ano todo' },
-      { name: 'Abrolhos', season: 'set–mar' },
-    ],
-    mapPins: [
-      { x: '56%', y: '58%', label: 'SP/RJ' },
-      { x: '62%', y: '48%', label: 'BA' },
     ],
   }),
   species({
@@ -421,9 +358,9 @@ interface Seed {
 const SEEDS: Seed[] = [
   // ---- Minhas capturas (diário) ----
   { id: 'c-me-1', userId: MOCK_ME_ID, speciesId: 'sp-traira', capturedAt: at(12, 'mar', 2026), locationName: 'Represa de Guarapiranga', weightGrams: 1400, lengthCm: 42 },
-  { id: 'c-me-2', userId: MOCK_ME_ID, speciesId: 'sp-betta', capturedAt: at(2, 'fev', 2026), locationName: 'Aquário 40 L — casa', weightGrams: null, lengthCm: null },
+  { id: 'c-me-2', userId: MOCK_ME_ID, speciesId: 'sp-traira', capturedAt: at(2, 'fev', 2026), locationName: 'Lagoa do Taquaral — SP', weightGrams: 900, lengthCm: 36 },
   { id: 'c-me-3', userId: MOCK_ME_ID, speciesId: 'sp-tambaqui', capturedAt: at(8, 'jan', 2026), locationName: 'Rio Solimões — AM', weightGrams: 6200, lengthCm: 61 },
-  { id: 'c-me-4', userId: MOCK_ME_ID, speciesId: 'sp-peixe-palhaco', capturedAt: at(21, 'dez', 2025), locationName: 'Aquário marinho — clube', weightGrams: null, lengthCm: null },
+  { id: 'c-me-4', userId: MOCK_ME_ID, speciesId: 'sp-anchova', capturedAt: at(21, 'dez', 2025), locationName: 'Praia do Cassino — RS', weightGrams: 2600, lengthCm: 55 },
   { id: 'c-me-5', userId: MOCK_ME_ID, speciesId: 'sp-pacu', capturedAt: at(28, 'fev', 2026), locationName: 'Pesqueiro Maeda — SP', weightGrams: 3100, lengthCm: 47 },
   { id: 'c-me-6', userId: MOCK_ME_ID, speciesId: 'sp-tucunare-acu', capturedAt: at(14, 'out', 2025), locationName: 'Rio Negro — Barcelos', weightGrams: 4800, lengthCm: 68 },
   { id: 'c-me-7', userId: MOCK_ME_ID, speciesId: 'sp-tucunare-acu', capturedAt: at(3, 'nov', 2025), locationName: 'Represa de Furnas — MG', weightGrams: 1900, lengthCm: 44 },
@@ -433,7 +370,7 @@ const SEEDS: Seed[] = [
   // ---- Capturas de amigos (feed) ----
   { id: 'c-fr-1', userId: 'mock-marina', speciesId: 'sp-pirarucu', capturedAt: hoursAgo(2), locationName: 'Mamirauá — AM', weightGrams: 18400, lengthCm: 148 },
   { id: 'c-fr-2', userId: 'mock-caio', speciesId: 'sp-tambaqui', capturedAt: daysAgo(2), locationName: 'Rio Solimões — AM', weightGrams: 6200, lengthCm: 61 },
-  { id: 'c-fr-3', userId: 'mock-bia', speciesId: 'sp-peixe-palhaco', capturedAt: daysAgo(3), locationName: 'Aquário marinho — clube', weightGrams: null, lengthCm: null },
+  { id: 'c-fr-3', userId: 'mock-bia', speciesId: 'sp-robalo-flecha', capturedAt: daysAgo(3), locationName: 'Barra do Una — SP', weightGrams: 4100, lengthCm: 70 },
   { id: 'c-fr-4', userId: 'mock-marina', speciesId: 'sp-anchova', capturedAt: daysAgo(4), locationName: 'Praia do Cassino — RS', weightGrams: 4200, lengthCm: 71 },
   { id: 'c-fr-5', userId: 'mock-caio', speciesId: 'sp-dourado', capturedAt: daysAgo(5), locationName: 'Rio Paraná — Porto Rico', weightGrams: 7600, lengthCm: 79 },
   { id: 'c-fr-6', userId: 'mock-bia', speciesId: 'sp-marlim-azul', capturedAt: daysAgo(6), locationName: 'Vitória — ES', weightGrams: 92000, lengthCm: 280 },

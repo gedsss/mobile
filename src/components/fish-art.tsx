@@ -1,4 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
+import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { type ReactNode } from 'react';
 import { StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
@@ -6,10 +7,10 @@ import { StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 import type { Difficulty } from '@/api/types';
 import { Stripes } from '@/components/stripes';
 import { useRarity, useTheme } from '@/hooks/use-theme';
+import { resolvePhotoUrl } from '@/utils/photo';
 
-// Arte da carta: a foto de referência quando existe; senão o placeholder
-// "holográfico" (faixas diagonais nas duas tintas da raridade) com a silhueta
-// do peixe na cor da raridade.
+// Arte da carta: faixas na tinta da raridade + ilustração da espécie (ou foto).
+// Bloqueada: a mesma ilustração pintada de uma cor só, como silhueta.
 export function FishArt({
   difficulty,
   imageUrl,
@@ -31,9 +32,14 @@ export function FishArt({
   const r = useRarity()[difficulty];
 
   if (locked) {
+    const url = resolvePhotoUrl(imageUrl);
     return (
       <View style={[styles.center, { borderRadius: radius, backgroundColor: theme.backgroundSelected }, style]}>
-        <Ionicons name="fish" size={iconSize} color={theme.text} style={styles.silhouette} />
+        {url ? (
+          <Image source={{ uri: url }} tintColor={theme.text} contentFit="contain" style={[styles.lockedImage, styles.silhouette]} />
+        ) : (
+          <Ionicons name="fish" size={iconSize} color={theme.text} style={styles.silhouette} />
+        )}
         {children}
       </View>
     );
@@ -84,4 +90,5 @@ const styles = StyleSheet.create({
   center: { alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
   fish: { opacity: 0.8 },
   silhouette: { opacity: 0.16 },
+  lockedImage: { position: 'absolute', top: '6%', bottom: '6%', left: '4%', right: '4%' },
 });

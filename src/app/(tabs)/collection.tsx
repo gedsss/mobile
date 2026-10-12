@@ -146,7 +146,7 @@ export default function CollectionScreen() {
                   {got ? (
                     <FishArt difficulty={s.difficulty} imageUrl={s.referenceImageUrl} iconSize={44} style={styles.tileArt} />
                   ) : (
-                    <FishArt difficulty={s.difficulty} locked iconSize={44} style={styles.tileArt} />
+                    <FishArt difficulty={s.difficulty} imageUrl={s.referenceImageUrl} locked iconSize={44} style={styles.tileArt} />
                   )}
                   <ThemedText style={[styles.tileNum, { color: got ? theme.text : theme.textSecondary }]}>{dexNumber(i)}</ThemedText>
                   {!got && <Ionicons name="lock-closed" size={14} color={theme.textSecondary} style={styles.lock} />}
@@ -188,7 +188,7 @@ function LockedSheet({ hint, onClose }: { hint: { s: Species; i: number } | null
         <View style={[styles.sheet, { backgroundColor: theme.backgroundElement, paddingBottom: insets.bottom + 20 }]} accessibilityViewIsModal>
           <View style={[styles.grabber, { backgroundColor: theme.border }]} />
           <View style={[styles.lockedCard, { backgroundColor: theme.backgroundSelected, boxShadow: `inset 0 0 0 3px ${theme.border}` }]}>
-            <FishArt difficulty={s.difficulty} locked iconSize={110} style={styles.lockedArt} />
+            <FishArt difficulty={s.difficulty} imageUrl={s.referenceImageUrl} locked iconSize={110} style={styles.lockedArt} />
             <ThemedText style={styles.lockedNum}>{dexNumber(hint.i)}</ThemedText>
           </View>
           <ThemedText type="heading">???</ThemedText>

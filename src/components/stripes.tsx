@@ -4,9 +4,8 @@ import { StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 
 import { resolvePhotoUrl } from '@/utils/photo';
 
-// Placeholder "foto" do desenho: faixas diagonais em duas tonalidades. As fotos
-// reais são opcionais (referenceImageUrl / photoUrl) — quando existem, entram no
-// lugar das faixas. O Claude Design deixa claro que as faixas são provisórias.
+// Faixas diagonais em duas tonalidades. Foto (photoUrl) entra no lugar das
+// faixas; ilustração .svg (referenceImageUrl) fica por cima delas, inteira.
 export type Tone = readonly [string, string];
 
 const STRIPE_WIDTH = 18;
@@ -25,10 +24,13 @@ export function Stripes({
   style?: StyleProp<ViewStyle>;
   children?: ReactNode;
 }) {
+  const url = resolvePhotoUrl(imageUrl);
+  const isIllustration = url != null && url.endsWith('.svg');
+
   return (
     <View style={[styles.container, { borderRadius: radius, backgroundColor: tone[1] }, style]}>
-      {resolvePhotoUrl(imageUrl) ? (
-        <Image source={{ uri: resolvePhotoUrl(imageUrl) as string }} style={StyleSheet.absoluteFill} contentFit="cover" />
+      {url && !isIllustration ? (
+        <Image source={{ uri: url }} style={StyleSheet.absoluteFill} contentFit="cover" />
       ) : (
         <View style={styles.stripeWrap} pointerEvents="none">
           {Array.from({ length: STRIPE_COUNT }).map((_, i) => (
@@ -39,6 +41,7 @@ export function Stripes({
           ))}
         </View>
       )}
+      {isIllustration && <Image source={{ uri: url }} style={styles.illustration} contentFit="contain" />}
       {children}
     </View>
   );
@@ -46,6 +49,7 @@ export function Stripes({
 
 const styles = StyleSheet.create({
   container: { overflow: 'hidden' },
+  illustration: { position: 'absolute', top: '6%', bottom: '6%', left: '4%', right: '4%' },
   stripeWrap: {
     position: 'absolute',
     left: '-60%',

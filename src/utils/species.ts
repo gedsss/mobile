@@ -45,9 +45,9 @@ export function activeFilterCount(filter: SpeciesFilter) {
 }
 
 const REGION_MATCHERS: Record<string, RegExp> = {
-  Amazônia: /Amaz|Negro|Solimões|Mamirauá|Tucuruí|Araguaia/i,
-  Sudeste: /SE|SP|RJ|Furnas|Sudeste|MG|ES|Ribeira|Paraná/i,
-  Litoral: /Litoral|Praia|Barra|Cabo|Baía|Vitória|Paranaguá|Cassino/i,
+  Amazônia: /Amaz|Negro|Solimões|Mamirauá|Tucuruí|Tapajós|Xingu|Madeira|Araguaia|\(AM|\(PA|\(RO/,
+  Sudeste: /Sudeste|SP|RJ|MG|ES|Paraná|Grande/,
+  Litoral: /Litoral|Praia|Baía|Cabo|Vitória|Paranaguá|Mar aberto|Parcéis|Ilhas|Costões|Mangues|Estuários/i,
 };
 
 // Espelha filtered() do Claude Design. Filtros que dependem de campos ausentes

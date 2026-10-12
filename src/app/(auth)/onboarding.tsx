@@ -123,13 +123,13 @@ function CardFan() {
   return (
     <View style={styles.fan}>
       <View style={[styles.fanItem, { left: 0, top: 50 }]}>
-        <MiniCard difficulty="HARD" num="#010" name="Tucunaré-açu" width={132} rotate="-14deg" />
+        <MiniCard difficulty="HARD" num="#013" name="Tucunaré-açu" width={132} rotate="-14deg" />
       </View>
       <View style={[styles.fanItem, { right: 0, top: 50 }]}>
-        <MiniCard difficulty="EPIC" num="#014" name="Dourado" width={132} rotate="14deg" />
+        <MiniCard difficulty="EPIC" num="#017" name="Dourado" width={132} rotate="14deg" />
       </View>
       <View style={[styles.fanItem, { left: 76, top: 0 }]}>
-        <MiniCard difficulty="LEGENDARY" num="#017" name="Pirarucu" width={160} rotate="0deg" pill />
+        <MiniCard difficulty="LEGENDARY" num="#019" name="Pirarucu" width={160} rotate="0deg" pill />
       </View>
     </View>
   );
@@ -157,9 +157,9 @@ function LevelBadge() {
       <View style={styles.levelBar}>
         <XpTrack ratio={1} height={16} />
       </View>
-      <XpChip difficulty="HARD" label="+35 XP Pintado" style={{ position: 'absolute', left: -6, top: 0, transform: [{ rotate: '-8deg' }] }} />
-      <XpChip difficulty="EPIC" label="+60 XP Dourado" style={{ position: 'absolute', right: -6, top: 36, transform: [{ rotate: '7deg' }] }} />
-      <XpChip difficulty="EASY" label="+10 XP Traíra" style={{ position: 'absolute', right: 10, top: 276, transform: [{ rotate: '4deg' }] }} />
+      <XpChip difficulty="HARD" label="+50 XP Pintado" style={{ position: 'absolute', left: -6, top: 0, transform: [{ rotate: '-8deg' }] }} />
+      <XpChip difficulty="EPIC" label="+70 XP Dourado" style={{ position: 'absolute', right: -6, top: 36, transform: [{ rotate: '7deg' }] }} />
+      <XpChip difficulty="EASY" label="+15 XP Traíra" style={{ position: 'absolute', right: 10, top: 276, transform: [{ rotate: '4deg' }] }} />
     </View>
   );
 }
