@@ -6,6 +6,7 @@ import { Pressable, SectionList, StyleSheet, View } from 'react-native';
 import * as friendshipsApi from '@/api/friendships';
 import { useMe } from '@/api/hooks';
 import type { Friendship } from '@/api/types';
+import { AddFriendForm, FriendCodeCard } from '@/components/friend-code';
 import { FriendshipRow } from '@/components/friendship-row';
 import { Screen } from '@/components/screen';
 import { ErrorView, LoadingView } from '@/components/states';
@@ -18,37 +19,31 @@ type Variant = 'friend' | 'received' | 'sent';
 export default function FriendsScreen() {
   const theme = useTheme();
   const { data: me } = useMe();
-  const { data, isLoading, isError, refetch } = useQuery({
-    queryKey: ['friendships'],
-    queryFn: friendshipsApi.listFriendships,
-  });
+  const { data, isLoading, isError, refetch } = useQuery({ queryKey: ['friendships'], queryFn: friendshipsApi.listFriendships });
 
-  const sections: { title: string; variant: Variant; data: Friendship[] }[] = data
+  const sections: { title: string; count: number; variant: Variant; data: Friendship[] }[] = data
     ? (
         [
-          { title: `Pedidos recebidos (${data.pendingReceived.length})`, variant: 'received', data: data.pendingReceived },
-          { title: `Amigos (${data.friends.length})`, variant: 'friend', data: data.friends },
-          { title: `Pedidos enviados (${data.pendingSent.length})`, variant: 'sent', data: data.pendingSent },
-        ] as { title: string; variant: Variant; data: Friendship[] }[]
+          { title: 'Pedidos', count: data.pendingReceived.length, variant: 'received', data: data.pendingReceived },
+          { title: 'Seus amigos', count: data.friends.length, variant: 'friend', data: data.friends },
+          { title: 'Enviados', count: data.pendingSent.length, variant: 'sent', data: data.pendingSent },
+        ] as { title: string; count: number; variant: Variant; data: Friendship[] }[]
       ).filter(section => section.data.length > 0)
     : [];
 
   return (
     <Screen padded={false}>
       <View style={styles.header}>
-        <View>
-          <ThemedText type="heading">Amigos</ThemedText>
-          <ThemedText type="body" themeColor="textSecondary">
-            Compartilhe seu código para conectar
-          </ThemedText>
-        </View>
         <Pressable
-          onPress={() => router.push('/friends/add')}
-          style={[styles.addButton, { backgroundColor: theme.primary }]}
+          onPress={() => router.back()}
+          style={[styles.back, { backgroundColor: theme.backgroundElement, boxShadow: `inset 0 0 0 2px ${theme.border}, 0 3px 0 ${theme.border}` }]}
           accessibilityRole="button"
-          accessibilityLabel="Adicionar amigo">
-          <Ionicons name="person-add" size={20} color={theme.primaryText} />
+          accessibilityLabel="Voltar">
+          <Ionicons name="chevron-back" size={22} color={theme.text} />
         </Pressable>
+        <ThemedText type="heading" accessibilityRole="header">
+          Amigos
+        </ThemedText>
       </View>
 
       {isLoading ? (
@@ -60,19 +55,25 @@ export default function FriendsScreen() {
           sections={sections}
           keyExtractor={item => item.id}
           contentContainerStyle={styles.list}
+          keyboardShouldPersistTaps="handled"
+          stickySectionHeadersEnabled={false}
+          ListHeaderComponent={
+            <View style={styles.top}>
+              <FriendCodeCard />
+              <AddFriendForm />
+            </View>
+          }
           renderSectionHeader={({ section }) => (
-            <ThemedText type="subtitle" style={styles.sectionTitle}>
-              {section.title}
+            <ThemedText type="title" style={styles.sectionTitle}>
+              {section.title} <ThemedText type="title" themeColor="textSecondary">{section.count}</ThemedText>
             </ThemedText>
           )}
-          renderItem={({ item, section }) => (
-            <FriendshipRow friendship={item} myId={me.id} variant={section.variant as Variant} />
-          )}
+          renderItem={({ item, section }) => <FriendshipRow friendship={item} myId={me.id} variant={section.variant} />}
           ItemSeparatorComponent={() => <View style={{ height: Spacing.sm }} />}
-          SectionSeparatorComponent={() => <View style={{ height: Spacing.lg }} />}
+          SectionSeparatorComponent={() => <View style={{ height: Spacing.sm }} />}
           ListEmptyComponent={
             <ThemedText type="body" themeColor="textSecondary" style={styles.emptyText}>
-              Você ainda não tem amigos por aqui. Toque em {'"'}+{'"'} para adicionar.
+              Você ainda não tem amigos por aqui. Compartilhe seu código para começar!
             </ThemedText>
           }
         />
@@ -82,22 +83,10 @@ export default function FriendsScreen() {
 }
 
 const styles = StyleSheet.create({
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: Spacing.md,
-    paddingTop: Spacing.sm,
-    paddingBottom: Spacing.md,
-  },
-  addButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  list: { paddingHorizontal: Spacing.md, paddingBottom: Spacing.xxl },
-  sectionTitle: { marginBottom: Spacing.sm },
-  emptyText: { textAlign: 'center', marginTop: Spacing.xl },
+  header: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 20, paddingTop: Spacing.sm, paddingBottom: Spacing.sm },
+  back: { width: 44, height: 44, borderRadius: 15, alignItems: 'center', justifyContent: 'center' },
+  list: { paddingHorizontal: 20, paddingBottom: Spacing.xxl },
+  top: { gap: 16, paddingTop: 8, paddingBottom: 8 },
+  sectionTitle: { marginTop: 14, marginBottom: 4 },
+  emptyText: { textAlign: 'center', marginTop: Spacing.lg },
 });

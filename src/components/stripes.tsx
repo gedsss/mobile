@@ -1,6 +1,8 @@
 import { Image } from 'expo-image';
 import { type ReactNode } from 'react';
-import { StyleSheet, View, type ViewStyle } from 'react-native';
+import { StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
+
+import { resolvePhotoUrl } from '@/utils/photo';
 
 // Placeholder "foto" do desenho: faixas diagonais em duas tonalidades. As fotos
 // reais são opcionais (referenceImageUrl / photoUrl) — quando existem, entram no
@@ -20,13 +22,13 @@ export function Stripes({
   tone: Tone;
   imageUrl?: string | null;
   radius?: number;
-  style?: ViewStyle | ViewStyle[];
+  style?: StyleProp<ViewStyle>;
   children?: ReactNode;
 }) {
   return (
     <View style={[styles.container, { borderRadius: radius, backgroundColor: tone[1] }, style]}>
-      {imageUrl ? (
-        <Image source={{ uri: imageUrl }} style={StyleSheet.absoluteFill} contentFit="cover" />
+      {resolvePhotoUrl(imageUrl) ? (
+        <Image source={{ uri: resolvePhotoUrl(imageUrl) as string }} style={StyleSheet.absoluteFill} contentFit="cover" />
       ) : (
         <View style={styles.stripeWrap} pointerEvents="none">
           {Array.from({ length: STRIPE_COUNT }).map((_, i) => (

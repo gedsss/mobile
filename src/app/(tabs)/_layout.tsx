@@ -1,103 +1,104 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Tabs } from 'expo-router/js-tabs';
-import { Platform, StyleSheet, View } from 'react-native';
+import { type ComponentProps } from 'react';
+import { StyleSheet, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useTheme } from '@/hooks/use-theme';
 
-// Barra de abas flutuante do Claude Design: Catálogo · Feed · (＋) · Coleção · Perfil.
-// Amigos saiu das abas — agora é uma tela acessada pelo feed e pelo perfil.
+type IconName = ComponentProps<typeof Ionicons>['name'];
+
+// Tab bar da Variação A: encaixada (não flutua), aba ativa com pílula rosa e o
+// ＋ central em amarelo com degrau. Catálogo · Feed · (＋) · Coleção · Perfil.
 export default function TabsLayout() {
   const theme = useTheme();
-  const active = theme.accent;
-  const inactive = theme.tabInactive;
+  const insets = useSafeAreaInsets();
+
+  const icon = (name: IconName, active: IconName) => {
+    const render = ({ focused }: { focused: boolean }) => <TabIcon name={name} active={active} focused={focused} />;
+    return render;
+  };
 
   return (
     <Tabs
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: active,
-        tabBarInactiveTintColor: inactive,
-        tabBarShowLabel: true,
+        tabBarActiveTintColor: theme.text,
+        tabBarInactiveTintColor: theme.tabInactive,
         tabBarLabelStyle: styles.label,
         tabBarItemStyle: styles.item,
-        tabBarStyle: [styles.bar, { backgroundColor: theme.tabBar }],
+        tabBarStyle: [
+          styles.bar,
+          {
+            backgroundColor: theme.tabBar,
+            boxShadow: `0 -2px 0 ${theme.border}`,
+            height: 74 + insets.bottom,
+            paddingBottom: Math.max(insets.bottom, 10),
+          },
+        ],
         sceneStyle: { backgroundColor: theme.background },
       }}>
       <Tabs.Screen
         name="species"
-        options={{
-          title: 'Catálogo',
-          tabBarIcon: ({ color }) => <Ionicons name="fish" color={color} size={22} />,
-        }}
+        options={{ title: 'Catálogo', tabBarIcon: icon('book-outline', 'book') }}
       />
       <Tabs.Screen
         name="feed"
-        options={{
-          title: 'Feed',
-          tabBarIcon: ({ color }) => <Ionicons name="newspaper-outline" color={color} size={21} />,
-        }}
+        options={{ title: 'Feed', tabBarIcon: icon('people-outline', 'people') }}
       />
       <Tabs.Screen
         name="new-catch"
         options={{
           title: '',
-          // Como no Claude Design, a barra some na tela de novo registro — o × no
-          // topo fecha e volta.
+          tabBarAccessibilityLabel: 'Nova captura',
+          // A barra some no novo registro — o × no topo fecha e volta.
           tabBarStyle: { display: 'none' },
           tabBarIcon: () => (
-            <View style={[styles.centerButton, { backgroundColor: theme.primary }]}>
-              <Ionicons name="add" color={theme.primaryText} size={28} />
+            <View
+              style={[
+                styles.plus,
+                {
+                  backgroundColor: theme.accent,
+                  boxShadow: `0 0 0 4px ${theme.tabBar}, 0 8px 0 ${theme.accentLip}`,
+                },
+              ]}>
+              <Ionicons name="add" color={theme.accentText} size={34} />
             </View>
           ),
         }}
       />
       <Tabs.Screen
         name="collection"
-        options={{
-          title: 'Coleção',
-          tabBarIcon: ({ color }) => <Ionicons name="grid" color={color} size={20} />,
-        }}
+        options={{ title: 'Coleção', tabBarIcon: icon('albums-outline', 'albums') }}
       />
       <Tabs.Screen
         name="profile"
-        options={{
-          title: 'Perfil',
-          tabBarIcon: ({ color }) => <Ionicons name="person-outline" color={color} size={21} />,
-        }}
+        options={{ title: 'Perfil', tabBarIcon: icon('person-outline', 'person') }}
       />
     </Tabs>
   );
 }
 
+function TabIcon({ name, active, focused }: { name: IconName; active: IconName; focused: boolean }) {
+  const theme = useTheme();
+  return (
+    <View style={[styles.pill, focused && { backgroundColor: theme.primary }]}>
+      <Ionicons name={focused ? active : name} size={21} color={focused ? theme.primaryText : theme.tabInactive} />
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
-  bar: {
-    position: 'absolute',
-    left: 12,
-    right: 12,
-    bottom: Platform.select({ ios: 24, android: 14, default: 14 }),
-    height: 64,
-    borderRadius: 24,
-    borderTopWidth: 0,
-    paddingHorizontal: 6,
-    shadowColor: '#05161b',
-    shadowOpacity: 0.5,
-    shadowRadius: 22,
-    shadowOffset: { width: 0, height: 16 },
-    elevation: 14,
-  },
-  item: { paddingVertical: 8 },
-  label: { fontSize: 9.5, fontWeight: '700', marginTop: 2 },
-  centerButton: {
-    width: 54,
-    height: 54,
-    borderRadius: 19,
+  bar: { borderTopWidth: 0, paddingTop: 6, elevation: 0 },
+  item: { paddingVertical: 2 },
+  label: { fontSize: 11, fontWeight: '700', marginTop: 2 },
+  pill: { width: 52, height: 30, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+  plus: {
+    width: 62,
+    height: 62,
+    borderRadius: 22,
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: -22,
-    shadowColor: '#ff8a3d',
-    shadowOpacity: 0.7,
-    shadowRadius: 18,
-    shadowOffset: { width: 0, height: 12 },
-    elevation: 10,
+    marginTop: -26,
   },
 });

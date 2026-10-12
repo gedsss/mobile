@@ -1,4 +1,4 @@
-import type { Species } from '@/api/types';
+import type { Difficulty, Species } from '@/api/types';
 
 // Número no Dex a partir da posição no catálogo (ordem do backend/mock).
 export function dexNumber(index: number) {
@@ -16,6 +16,7 @@ export function dexNumberMap(list: Species[]): Record<string, string> {
 export type SpeciesFilter = {
   search: string;
   chip: string;
+  rarity: string;
   habitat: string;
   size: string;
   region: string;
@@ -23,11 +24,25 @@ export type SpeciesFilter = {
 
 export const EMPTY_FILTER: SpeciesFilter = {
   search: '',
-  chip: 'Todos',
+  chip: 'Todas',
+  rarity: 'Tudo',
   habitat: 'Tudo',
   size: 'Tudo',
   region: 'Tudo',
 };
+
+const RARITY_BY_LABEL: Record<string, Difficulty> = {
+  Comum: 'EASY',
+  Incomum: 'MEDIUM',
+  Raro: 'HARD',
+  Épico: 'EPIC',
+  Lendário: 'LEGENDARY',
+};
+
+// Quantos filtros do painel (fora busca e chip) estão ativos.
+export function activeFilterCount(filter: SpeciesFilter) {
+  return (['rarity', 'habitat', 'size', 'region'] as const).filter(k => filter[k] !== 'Tudo').length;
+}
 
 const REGION_MATCHERS: Record<string, RegExp> = {
   Amazônia: /Amaz|Negro|Solimões|Mamirauá|Tucuruí|Araguaia/i,
@@ -49,10 +64,10 @@ export function filterSpecies(
       return false;
     }
 
-    if (filter.chip === 'Água doce' && f.habitat && f.habitat !== 'Doce') return false;
-    if (filter.chip === 'Água salgada' && f.habitat && f.habitat !== 'Salgada') return false;
-    if (filter.chip === 'Lendários' && f.difficulty !== 'LEGENDARY') return false;
+    if (filter.chip === 'Capturadas' && !isCaptured(f.id)) return false;
     if (filter.chip === 'Faltando' && isCaptured(f.id)) return false;
+
+    if (filter.rarity !== 'Tudo' && f.difficulty !== RARITY_BY_LABEL[filter.rarity]) return false;
 
     if (filter.habitat === 'Água doce' && f.habitat && f.habitat !== 'Doce') return false;
     if (filter.habitat === 'Água salgada' && f.habitat && f.habitat !== 'Salgada') return false;
@@ -75,10 +90,30 @@ export function filterSpecies(
   });
 }
 
-export const CHIP_OPTIONS = ['Todos', 'Água doce', 'Água salgada', 'Lendários', 'Faltando'];
+export const CHIP_OPTIONS = ['Todas', 'Capturadas', 'Faltando'] as const;
 
 export const FILTER_GROUPS: { key: keyof SpeciesFilter; label: string; options: string[] }[] = [
+  { key: 'rarity', label: 'Raridade', options: ['Tudo', 'Comum', 'Incomum', 'Raro', 'Épico', 'Lendário'] },
   { key: 'habitat', label: 'Habitat', options: ['Tudo', 'Água doce', 'Água salgada'] },
   { key: 'size', label: 'Tamanho médio', options: ['Tudo', 'Até 30 cm', '30–90 cm', 'Acima de 90 cm'] },
   { key: 'region', label: 'Região', options: ['Tudo', 'Amazônia', 'Sudeste', 'Litoral'] },
 ];
+
+function normalize(text: string) {
+  return text.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+}
+
+// Sugestões para "busca sem resultado": espécies que compartilham alguma
+// palavra (ou o começo dela) com o termo buscado, ignorando acentos.
+export function suggestSpecies(list: Species[], query: string, max = 3): Species[] {
+  const words = normalize(query)
+    .split(/[^a-z0-9]+/)
+    .filter(w => w.length >= 3);
+  if (!words.length) return [];
+  return list
+    .filter(s => {
+      const haystack = normalize(`${s.name} ${s.scientificName ?? ''}`);
+      return words.some(w => haystack.includes(w.slice(0, Math.max(3, w.length - 2))));
+    })
+    .slice(0, max);
+}

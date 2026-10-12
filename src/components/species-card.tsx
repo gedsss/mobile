@@ -3,78 +3,92 @@ import { router } from 'expo-router';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import type { Species } from '@/api/types';
-import { HabitatChip } from '@/components/badge';
-import { Stripes, type Tone } from '@/components/stripes';
+import { RarityPill } from '@/components/badge';
+import { FishArt, RarityFrame } from '@/components/fish-art';
 import { ThemedText } from '@/components/themed-text';
-import { DifficultyLabels, Radius, Spacing } from '@/constants/theme';
-import { useRarity, useTheme } from '@/hooks/use-theme';
+import { DifficultyLabels, HeadingFont } from '@/constants/theme';
+import { useTheme } from '@/hooks/use-theme';
 import { dexNumber } from '@/utils/species';
 
-const FALLBACK_TONE: Tone = ['#123', '#0b2831'];
-
-function CapturedCheck({ size = 20 }: { size?: number }) {
+function CapturedBadge({ count }: { count?: number }) {
+  const theme = useTheme();
   return (
-    <View style={[styles.check, { width: size, height: size, borderRadius: size / 2 }]}>
-      <Ionicons name="checkmark" size={size * 0.62} color="#05161b" />
+    <View style={[styles.got, { backgroundColor: theme.success }]}>
+      <Ionicons name="checkmark" size={14} color={theme.successText} />
+      {count != null && count > 0 && (
+        <ThemedText style={[styles.gotText, { color: theme.successText }]}>{count}</ThemedText>
+      )}
     </View>
   );
 }
 
+function DexNumber({ index }: { index: number }) {
+  const theme = useTheme();
+  return (
+    <View style={[styles.num, { backgroundColor: theme.backgroundElement }]}>
+      <ThemedText style={styles.numText}>{dexNumber(index)}</ThemedText>
+    </View>
+  );
+}
+
+// Carta colecionável da grade do catálogo.
 export function SpeciesGridCard({
   species,
   index,
   captured,
-  showSci = true,
+  captureCount,
 }: {
   species: Species;
   index: number;
   captured: boolean;
+  captureCount?: number;
   showSci?: boolean;
 }) {
   const theme = useTheme();
-  const rarity = useRarity();
-  const tone = (species.tone as Tone) ?? FALLBACK_TONE;
-  const r = rarity[species.difficulty];
 
   return (
     <Pressable
       onPress={() => router.push(`/species/${species.id}`)}
       accessibilityRole="button"
-      accessibilityLabel={`Ver ${species.name}`}
-      style={[styles.gridCard, { backgroundColor: theme.backgroundElement, borderColor: r.border }]}>
-      <Stripes tone={tone} radius={14} style={styles.gridImage}>
-        <View style={[styles.rarityTag, { backgroundColor: r.color }]}>
-          <ThemedText type="monoSmall" style={styles.rarityInk}>
-            {DifficultyLabels[species.difficulty]}
-          </ThemedText>
+      accessibilityLabel={`${dexNumber(index)} ${species.name}, ${DifficultyLabels[species.difficulty].toLowerCase()}${captured ? ', capturado' : ''}`}
+      style={({ pressed }) => [styles.gridWrap, pressed && styles.pressed]}>
+      <RarityFrame difficulty={species.difficulty} style={styles.gridFrame}>
+        <View style={[styles.inner, { backgroundColor: theme.backgroundElement }]}>
+          <FishArt
+            difficulty={species.difficulty}
+            imageUrl={species.referenceImageUrl}
+            iconSize={56}
+            style={[styles.gridArt, !captured && styles.notCaught]}>
+            <View style={styles.tl}>
+              <DexNumber index={index} />
+            </View>
+            {captured && (
+              <View style={styles.tr}>
+                <CapturedBadge count={captureCount} />
+              </View>
+            )}
+          </FishArt>
+          <View style={styles.gridBody}>
+            <ThemedText style={styles.name} numberOfLines={1}>
+              {species.name}
+            </ThemedText>
+            {species.scientificName && (
+              <ThemedText type="caption" themeColor="textSecondary" style={styles.sci} numberOfLines={1}>
+                {species.scientificName}
+              </ThemedText>
+            )}
+            <View style={styles.footer}>
+              <RarityPill difficulty={species.difficulty} size="sm" />
+              <ThemedText style={[styles.xp, { color: theme.textSecondary }]}>{species.baseXp} XP</ThemedText>
+            </View>
+          </View>
         </View>
-        {captured && <View style={styles.checkTR}><CapturedCheck /></View>}
-      </Stripes>
-      <View style={styles.gridBody}>
-        <View style={styles.nameRow}>
-          <ThemedText type="monoSmall" themeColor="textFaint">
-            {dexNumber(index)}
-          </ThemedText>
-          <ThemedText type="subtitle" numberOfLines={1} style={styles.name}>
-            {species.name}
-          </ThemedText>
-        </View>
-        {showSci && species.scientificName && (
-          <ThemedText type="caption" themeColor="textFaint" style={styles.sci}>
-            {species.scientificName}
-          </ThemedText>
-        )}
-        <View style={styles.metaRow}>
-          {species.habitat && <HabitatChip habitat={species.habitat} />}
-          <ThemedText type="monoSmall" style={{ color: theme.primary }}>
-            +{species.baseXp}xp
-          </ThemedText>
-        </View>
-      </View>
+      </RarityFrame>
     </Pressable>
   );
 }
 
+// Linha da visualização em lista.
 export function SpeciesListRow({
   species,
   index,
@@ -85,76 +99,70 @@ export function SpeciesListRow({
   captured: boolean;
 }) {
   const theme = useTheme();
-  const rarity = useRarity();
-  const tone = (species.tone as Tone) ?? FALLBACK_TONE;
-  const r = rarity[species.difficulty];
 
   return (
     <Pressable
       onPress={() => router.push(`/species/${species.id}`)}
       accessibilityRole="button"
-      accessibilityLabel={`Ver ${species.name}`}
-      style={[styles.listRow, { backgroundColor: theme.backgroundElement, borderColor: r.border }]}>
-      <Stripes tone={tone} radius={14} style={styles.listThumb}>
-        {captured && <View style={styles.checkTR}><CapturedCheck size={16} /></View>}
-      </Stripes>
+      accessibilityLabel={`${dexNumber(index)} ${species.name}, ${DifficultyLabels[species.difficulty].toLowerCase()}${captured ? ', capturado' : ''}`}
+      style={({ pressed }) => [
+        styles.listRow,
+        { backgroundColor: theme.backgroundElement, boxShadow: `inset 0 0 0 2px ${theme.border}` },
+        pressed && styles.pressed,
+      ]}>
+      <RarityFrame difficulty={species.difficulty} radius={16} thickness={3} style={styles.thumbFrame}>
+        <FishArt
+          difficulty={species.difficulty}
+          imageUrl={species.referenceImageUrl}
+          iconSize={34}
+          radius={13}
+          style={styles.thumb}
+        />
+      </RarityFrame>
       <View style={styles.listInfo}>
-        <View style={styles.nameRow}>
-          <ThemedText type="monoSmall" themeColor="textFaint">
-            {dexNumber(index)}
-          </ThemedText>
-          <ThemedText type="subtitle" numberOfLines={1} style={styles.name}>
+        <View style={styles.listTitle}>
+          <ThemedText style={[styles.listNum, { color: theme.textSecondary }]}>{dexNumber(index)}</ThemedText>
+          <ThemedText style={styles.name} numberOfLines={1}>
             {species.name}
           </ThemedText>
         </View>
         {species.scientificName && (
-          <ThemedText type="caption" themeColor="textFaint" style={styles.sci}>
+          <ThemedText type="caption" themeColor="textSecondary" style={styles.sci} numberOfLines={1}>
             {species.scientificName}
           </ThemedText>
         )}
-        <View style={styles.metaRow}>
-          {species.habitat && <HabitatChip habitat={species.habitat} />}
-          {species.averageSizeCm != null && (
-            <View style={[styles.sizeChip, { backgroundColor: theme.background }]}>
-              <ThemedText type="caption" themeColor="text">
-                ~{species.averageSizeCm} cm
-              </ThemedText>
-            </View>
-          )}
+        <View style={styles.footer}>
+          <RarityPill difficulty={species.difficulty} size="sm" />
+          <ThemedText style={[styles.xp, { color: theme.textSecondary }]}>{species.baseXp} XP</ThemedText>
         </View>
       </View>
-      <Ionicons name="chevron-forward" size={18} color={theme.textFaint} />
+      {captured ? <CapturedBadge /> : <Ionicons name="chevron-forward" size={20} color={theme.textSecondary} />}
     </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
-  gridCard: { flex: 1, borderRadius: Radius.card, borderWidth: 1.5, padding: 8 },
-  gridImage: { width: '100%', aspectRatio: 1.42 },
-  gridBody: { padding: 4, paddingTop: 8, gap: 3 },
-  rarityTag: { position: 'absolute', top: 7, left: 7, paddingHorizontal: 6, paddingVertical: 3, borderRadius: 7 },
-  rarityInk: { color: '#05161b' },
-  checkTR: { position: 'absolute', top: 6, right: 6 },
-  check: {
-    backgroundColor: '#3fbf8f',
-    borderWidth: 2,
-    borderColor: '#fff',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  nameRow: { flexDirection: 'row', alignItems: 'center', gap: 5 },
-  name: { flexShrink: 1 },
+  pressed: { transform: [{ translateY: 2 }] },
+  gridWrap: { flex: 1, marginBottom: 6 },
+  gridFrame: { flex: 1 },
+  inner: { flex: 1, borderRadius: 14, overflow: 'hidden' },
+  gridArt: { height: 106 },
+  notCaught: { opacity: 0.7 },
+  tl: { position: 'absolute', top: 8, left: 8 },
+  tr: { position: 'absolute', top: 8, right: 8 },
+  num: { borderRadius: 8, paddingHorizontal: 7, minHeight: 22, justifyContent: 'center' },
+  numText: { fontFamily: HeadingFont, fontSize: 12, lineHeight: 16 },
+  got: { flexDirection: 'row', alignItems: 'center', gap: 2, minHeight: 24, paddingHorizontal: 6, borderRadius: 12 },
+  gotText: { fontFamily: HeadingFont, fontSize: 12, lineHeight: 16 },
+  gridBody: { paddingHorizontal: 10, paddingTop: 8, paddingBottom: 10, gap: 2 },
+  name: { fontFamily: HeadingFont, fontSize: 17, lineHeight: 21, flexShrink: 1 },
   sci: { fontStyle: 'italic' },
-  metaRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4, flexWrap: 'wrap' },
-  listRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.md,
-    borderRadius: 18,
-    borderWidth: 1.5,
-    padding: 10,
-  },
-  listThumb: { width: 66, height: 66 },
-  listInfo: { flex: 1, gap: 2 },
-  sizeChip: { paddingHorizontal: 7, paddingVertical: 3, borderRadius: 7 },
+  footer: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 6, gap: 6 },
+  xp: { fontFamily: HeadingFont, fontSize: 14, lineHeight: 18 },
+  listRow: { flexDirection: 'row', alignItems: 'center', gap: 12, borderRadius: 20, padding: 10 },
+  thumbFrame: { width: 70, height: 70 },
+  thumb: { flex: 1 },
+  listInfo: { flex: 1, minWidth: 0, gap: 1 },
+  listTitle: { flexDirection: 'row', alignItems: 'baseline', gap: 6 },
+  listNum: { fontFamily: HeadingFont, fontSize: 13, lineHeight: 18 },
 });

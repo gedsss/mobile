@@ -1,22 +1,37 @@
 import { StyleSheet, Text, type TextProps } from 'react-native';
 
-import { FontSize, HeadingFont, HeadingFontSemiBold, MonoFont, type ThemeColor } from '@/constants/theme';
+import { DisplayFont, FontSize, HeadingFont, type ThemeColor } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 
 export type ThemedTextProps = TextProps & {
-  type?: 'heading' | 'title' | 'subtitle' | 'body' | 'bodyBold' | 'caption' | 'link' | 'mono' | 'monoSmall';
+  type?:
+    | 'display'
+    | 'heading'
+    | 'title'
+    | 'subtitle'
+    | 'number'
+    | 'body'
+    | 'bodyBold'
+    | 'label'
+    | 'caption'
+    | 'link'
+    | 'mono'
+    | 'monoSmall';
   themeColor?: ThemeColor;
   uppercase?: boolean;
 };
 
+// Escala da Variação A: Baloo 2 para títulos e números, fonte do sistema para
+// leitura. 'mono'/'monoSmall' viraram rótulos em caixa-alta (o app não usa mais
+// fonte monoespaçada) — o nome ficou para não mexer nos chamadores.
 export function ThemedText({ style, type = 'body', themeColor, uppercase, ...rest }: ThemedTextProps) {
   const theme = useTheme();
-  const isMono = type === 'mono' || type === 'monoSmall';
+  const isLabel = type === 'mono' || type === 'monoSmall';
 
   return (
     <Text
       style={[
-        { color: theme[themeColor ?? (isMono ? 'textFaint' : 'text')] },
+        { color: theme[themeColor ?? (isLabel ? 'textSecondary' : 'text')] },
         styles[type],
         type === 'link' && { color: theme.primary },
         uppercase && styles.uppercase,
@@ -28,54 +43,17 @@ export function ThemedText({ style, type = 'body', themeColor, uppercase, ...res
 }
 
 const styles = StyleSheet.create({
-  heading: {
-    fontSize: 29,
-    lineHeight: 33,
-    fontFamily: HeadingFont,
-    letterSpacing: -0.5,
-  },
-  title: {
-    fontSize: 22,
-    lineHeight: 27,
-    fontFamily: HeadingFont,
-    letterSpacing: -0.3,
-  },
-  subtitle: {
-    fontSize: 17,
-    lineHeight: 23,
-    fontFamily: HeadingFontSemiBold,
-  },
-  body: {
-    fontSize: FontSize.sm,
-    lineHeight: 21,
-    fontWeight: '400',
-  },
-  bodyBold: {
-    fontSize: FontSize.sm,
-    lineHeight: 21,
-    fontWeight: '800',
-  },
-  caption: {
-    fontSize: FontSize.xs,
-    lineHeight: 17,
-    fontWeight: '600',
-  },
-  link: {
-    fontSize: FontSize.sm,
-    lineHeight: 21,
-    fontWeight: '700',
-  },
-  mono: {
-    fontFamily: MonoFont,
-    fontSize: 10,
-    letterSpacing: 1.2,
-  },
-  monoSmall: {
-    fontFamily: MonoFont,
-    fontSize: 8.5,
-    letterSpacing: 0.8,
-  },
-  uppercase: {
-    textTransform: 'uppercase',
-  },
+  display: { fontSize: 40, lineHeight: 44, fontFamily: DisplayFont },
+  heading: { fontSize: 32, lineHeight: 36, fontFamily: HeadingFont },
+  title: { fontSize: 22, lineHeight: 26, fontFamily: HeadingFont },
+  subtitle: { fontSize: 18, lineHeight: 22, fontFamily: HeadingFont },
+  number: { fontSize: 18, lineHeight: 22, fontFamily: HeadingFont },
+  body: { fontSize: FontSize.md, lineHeight: 22, fontWeight: '400' },
+  bodyBold: { fontSize: FontSize.md, lineHeight: 22, fontWeight: '700' },
+  label: { fontSize: FontSize.sm, lineHeight: 18, fontWeight: '700' },
+  caption: { fontSize: 13, lineHeight: 18, fontWeight: '500' },
+  link: { fontSize: FontSize.sm, lineHeight: 20, fontWeight: '700' },
+  mono: { fontSize: 12, lineHeight: 16, fontWeight: '800', letterSpacing: 0.8 },
+  monoSmall: { fontSize: 11, lineHeight: 14, fontWeight: '800', letterSpacing: 0.6 },
+  uppercase: { textTransform: 'uppercase' },
 });
