@@ -3,7 +3,7 @@ import { USE_MOCKS } from '@/api/config';
 
 // Envia a foto da captura para o backend (POST /uploads) e devolve o caminho
 // relativo servido de volta ("/uploads/<uuid>.<ext>"). O caller guarda isso em
-// `photoUrl`; para exibir, passe por `photoUri()` (src/utils/photo.ts).
+// `photoUrl`; para exibir, passe por `resolvePhotoUrl()` (src/utils/photo.ts).
 export async function uploadPhoto(uri: string): Promise<{ url: string }> {
   // Modo demo: sem backend, o próprio URI local já serve de placeholder.
   if (USE_MOCKS) return { url: uri };

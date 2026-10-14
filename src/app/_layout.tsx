@@ -1,6 +1,7 @@
 import {
   Baloo2_600SemiBold,
   Baloo2_700Bold,
+  Baloo2_800ExtraBold,
   useFonts,
 } from '@expo-google-fonts/baloo-2';
 import { QueryClientProvider } from '@tanstack/react-query';
@@ -37,8 +38,8 @@ function RootNavigator() {
         <Stack.Screen name="species/[id]" options={{ headerShown: false }} />
         <Stack.Screen name="catch/[id]" options={{ title: 'Captura' }} />
         <Stack.Screen name="user/[id]" options={{ title: 'Perfil' }} />
-        <Stack.Screen name="friends/index" options={{ title: 'Amigos' }} />
-        <Stack.Screen name="friends/add" options={{ title: 'Adicionar amigo', presentation: 'modal' }} />
+        <Stack.Screen name="friends/index" options={{ headerShown: false }} />
+        <Stack.Screen name="friends/add" options={{ headerShown: false, presentation: 'modal' }} />
       </Stack.Protected>
     </Stack>
   );
@@ -46,7 +47,7 @@ function RootNavigator() {
 
 export default function RootLayout() {
   const colorScheme = useColorScheme();
-  const [fontsLoaded] = useFonts({ Baloo2_700Bold, Baloo2_600SemiBold });
+  const [fontsLoaded] = useFonts({ Baloo2_800ExtraBold, Baloo2_700Bold, Baloo2_600SemiBold });
 
   if (!fontsLoaded) return null;
 
@@ -58,7 +59,7 @@ export default function RootLayout() {
     colors: {
       ...base.colors,
       background: palette.background,
-      card: palette.headerBackground,
+      card: palette.backgroundElement,
       text: palette.text,
       border: palette.border,
       primary: palette.primary,

@@ -43,6 +43,12 @@ export interface SpeciesMapPin {
   label: string;
 }
 
+export interface SpeciesClosedSeason {
+  region: string;
+  period: string;
+  rule: string;
+}
+
 export interface Species {
   id: string;
   name: string;
@@ -63,6 +69,10 @@ export interface Species {
   regions?: SpeciesRegion[] | null;
   mapPins?: SpeciesMapPin[] | null;
   tone?: [string, string] | null;
+  bestTime?: string | null;
+  techniques?: string[] | null;
+  closedSeasons?: SpeciesClosedSeason[] | null;
+  tipsReviewed?: boolean;
 }
 
 export interface Catch {

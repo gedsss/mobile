@@ -1,3 +1,4 @@
+import { Ionicons } from '@expo/vector-icons';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
@@ -6,7 +7,7 @@ import * as reactionsApi from '@/api/reactions';
 import type { ReactionEmoji } from '@/api/types';
 import { REACTION_EMOJIS } from '@/api/types';
 import { ThemedText } from '@/components/themed-text';
-import { ReactionMeta, Spacing } from '@/constants/theme';
+import { ReactionMeta } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 
 // `initialReaction`/`counts` vêm do backend (captura enriquecida). O estado
@@ -53,35 +54,28 @@ export function ReactionBar({
     <View style={styles.row}>
       {REACTION_EMOJIS.map(code => {
         const meta = ReactionMeta[code];
-        const isActive = selected === code;
+        const on = selected === code;
         const base = counts?.[code] ?? 0;
         // ajusta o contador do backend pelo palpite otimista local
         const delta =
-          (isActive && initialReaction !== code ? 1 : 0) -
-          (!isActive && initialReaction === code ? 1 : 0);
+          (on && initialReaction !== code ? 1 : 0) -
+          (!on && initialReaction === code ? 1 : 0);
         const total = Math.max(0, base + delta);
         return (
           <Pressable
             key={code}
             accessibilityRole="button"
             accessibilityLabel={`Reagir com ${meta.label}`}
-            accessibilityState={{ selected: isActive }}
-            hitSlop={6}
+            accessibilityState={{ selected: on }}
             onPress={() => handlePress(code)}
             style={[
               styles.chip,
-              {
-                backgroundColor: isActive ? meta.color : theme.backgroundSelected,
-                borderColor: isActive ? 'transparent' : theme.border,
-              },
+              on
+                ? { backgroundColor: theme.primary, boxShadow: `0 3px 0 ${theme.primaryLip}` }
+                : { backgroundColor: theme.backgroundElement, boxShadow: `inset 0 0 0 2px ${theme.border}` },
             ]}>
-            <View
-              style={[
-                styles.glyph,
-                { backgroundColor: isActive ? 'rgba(5,22,27,0.55)' : meta.color, borderRadius: meta.glyph === 999 ? 999 : Number(meta.glyph) },
-              ]}
-            />
-            <ThemedText type="caption" style={{ color: isActive ? '#05161b' : theme.text }}>
+            <Ionicons name={meta.icon} size={18} color={on ? theme.primaryText : meta.color} />
+            <ThemedText type="label" style={{ color: on ? theme.primaryText : theme.text }}>
               {meta.label}
               {total > 0 ? ` ${total}` : ''}
             </ThemedText>
@@ -93,15 +87,6 @@ export function ReactionBar({
 }
 
 const styles = StyleSheet.create({
-  row: { flexDirection: 'row', gap: Spacing.xs + 2, flexWrap: 'wrap' },
-  chip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    minHeight: 36,
-    borderWidth: 1,
-    borderRadius: 11,
-    paddingHorizontal: 10,
-  },
-  glyph: { width: 12, height: 12 },
+  row: { flexDirection: 'row', gap: 8, flexWrap: 'wrap' },
+  chip: { flexDirection: 'row', alignItems: 'center', gap: 6, minHeight: 44, borderRadius: 14, paddingHorizontal: 12 },
 });

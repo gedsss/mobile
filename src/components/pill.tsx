@@ -1,50 +1,54 @@
+import { Ionicons } from '@expo/vector-icons';
+import { type ComponentProps } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
-import { Radius, Spacing } from '@/constants/theme';
-import { useColorSchemeName, useTheme } from '@/hooks/use-theme';
+import { HeadingFont } from '@/constants/theme';
+import { useTheme } from '@/hooks/use-theme';
 
-function usePillTones() {
-  const theme = useTheme();
-  const scheme = useColorSchemeName();
-  const active =
-    scheme === 'dark'
-      ? { bg: '#0f4a58', ink: '#f7fbfa', border: '#1d6675' }
-      : { bg: theme.backgroundSelected, ink: theme.text, border: theme.primary };
-  const inactive = { bg: theme.backgroundElement, ink: theme.textSecondary, border: theme.border };
-  return { active, inactive };
-}
-
+// Chip de filtro: 40pt de altura + hitSlop para fechar o alvo de 44pt.
 export function Pill({
   label,
+  count,
   active = false,
   onPress,
-  shape = 'pill',
+  trailingIcon,
 }: {
   label: string;
+  count?: number;
   active?: boolean;
   onPress: () => void;
-  shape?: 'pill' | 'rounded';
+  trailingIcon?: ComponentProps<typeof Ionicons>['name'];
 }) {
-  const { active: on, inactive: off } = usePillTones();
-  const tone = active ? on : off;
+  const theme = useTheme();
+  const ink = active ? theme.background : theme.text;
 
   return (
     <Pressable
       onPress={onPress}
+      hitSlop={4}
       accessibilityRole="button"
       accessibilityState={{ selected: active }}
       style={[
         styles.pill,
-        { borderRadius: shape === 'pill' ? Radius.pill : 11, backgroundColor: tone.bg, borderColor: tone.border },
+        active
+          ? { backgroundColor: theme.text }
+          : { backgroundColor: theme.backgroundElement, boxShadow: `inset 0 0 0 2px ${theme.border}` },
       ]}>
-      <ThemedText type="caption" style={{ color: tone.ink }}>
+      <ThemedText type="label" style={{ color: ink }}>
         {label}
       </ThemedText>
+      {count != null && (
+        <ThemedText type="label" style={{ color: ink, opacity: 0.7 }}>
+          {count}
+        </ThemedText>
+      )}
+      {trailingIcon && <Ionicons name={trailingIcon} size={15} color={ink} />}
     </Pressable>
   );
 }
 
+// Controle segmentado "chunky": trilho em surface2, opção ativa elevada com degrau.
 export function Segmented<T extends string>({
   options,
   value,
@@ -55,21 +59,22 @@ export function Segmented<T extends string>({
   onChange: (value: T) => void;
 }) {
   const theme = useTheme();
-  const scheme = useColorSchemeName();
-  const activeBg = scheme === 'dark' ? '#14424f' : theme.backgroundElement;
 
   return (
-    <View style={[styles.segmented, { backgroundColor: scheme === 'dark' ? 'rgba(255,255,255,0.09)' : theme.backgroundSelected }]}>
+    <View style={[styles.segmented, { backgroundColor: theme.backgroundSelected }]} accessibilityRole="tablist">
       {options.map(opt => {
         const selected = opt.value === value;
         return (
           <Pressable
             key={opt.value}
             onPress={() => onChange(opt.value)}
-            accessibilityRole="button"
+            accessibilityRole="tab"
             accessibilityState={{ selected }}
-            style={[styles.segment, selected && { backgroundColor: activeBg }]}>
-            <ThemedText type="caption" style={{ color: selected ? theme.text : theme.textSecondary }}>
+            style={[
+              styles.segment,
+              selected && { backgroundColor: theme.backgroundElement, boxShadow: `0 3px 0 ${theme.border}` },
+            ]}>
+            <ThemedText style={[styles.segmentText, { color: selected ? theme.text : theme.textSecondary }]}>
               {opt.label}
             </ThemedText>
           </Pressable>
@@ -81,21 +86,14 @@ export function Segmented<T extends string>({
 
 const styles = StyleSheet.create({
   pill: {
-    paddingHorizontal: Spacing.md,
-    paddingVertical: 8,
-    borderWidth: 1,
-  },
-  segmented: {
     flexDirection: 'row',
-    gap: 5,
-    padding: 4,
-    borderRadius: 15,
-  },
-  segment: {
-    flex: 1,
-    minHeight: 36,
-    borderRadius: 11,
     alignItems: 'center',
-    justifyContent: 'center',
+    gap: 6,
+    minHeight: 40,
+    paddingHorizontal: 14,
+    borderRadius: 999,
   },
+  segmented: { flexDirection: 'row', gap: 4, padding: 5, borderRadius: 18 },
+  segment: { flex: 1, minHeight: 44, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
+  segmentText: { fontFamily: HeadingFont, fontSize: 17, lineHeight: 22 },
 });

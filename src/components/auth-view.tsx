@@ -1,22 +1,26 @@
+import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ApiError } from '@/api/client';
 import { USE_MOCKS } from '@/api/config';
 import { useAuth } from '@/auth/auth-context';
 import { Button } from '@/components/button';
-import { Screen } from '@/components/screen';
+import { FishArt, RarityFrame } from '@/components/fish-art';
 import { Segmented } from '@/components/pill';
 import { TextField } from '@/components/text-field';
 import { ThemedText } from '@/components/themed-text';
-import { Radius, Spacing } from '@/constants/theme';
+import { BrandGradient, HeadingFont, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 
 const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 
 export function AuthView({ mode }: { mode: 'login' | 'register' }) {
   const theme = useTheme();
+  const insets = useSafeAreaInsets();
   const { login, register } = useAuth();
   const isRegister = mode === 'register';
 
@@ -66,47 +70,51 @@ export function AuthView({ mode }: { mode: 'login' | 'register' }) {
   };
 
   return (
-    <Screen padded={false} topColor="headerBackground">
-      <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <ScrollView
-          style={{ backgroundColor: theme.headerBackground }}
-          contentContainerStyle={[styles.content, { backgroundColor: theme.headerBackground }]}
-          keyboardShouldPersistTaps="handled">
-          <View style={styles.brand}>
-            <View style={[styles.logo, { backgroundColor: theme.primary }]}>
-              <View style={[styles.logoDot, { backgroundColor: theme.headerBackground }]} />
-            </View>
-            <ThemedText type="title">FishDex</ThemedText>
+    <KeyboardAvoidingView style={[styles.flex, { backgroundColor: theme.backgroundElement }]} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled" bounces={false}>
+        <LinearGradient colors={BrandGradient} start={{ x: 0, y: 0 }} end={{ x: 0.7, y: 1 }} style={[styles.hero, { paddingTop: insets.top + 32 }]}>
+          <View style={styles.ring} />
+          <View style={styles.heroCard}>
+            <RarityFrame difficulty="LEGENDARY" radius={18}>
+              <FishArt difficulty="LEGENDARY" iconSize={70} radius={14} style={styles.heroArt} />
+            </RarityFrame>
           </View>
-
-          <ThemedText type="heading" style={styles.title}>
-            {isRegister ? 'Comece o seu Dex' : 'Bem-vindo de volta'}
-          </ThemedText>
-          <ThemedText type="body" themeColor="textSecondary" style={styles.subtitle}>
-            {isRegister
-              ? 'Crie sua conta para registrar capturas, desbloquear espécies e acompanhar seus amigos.'
-              : 'Entre para continuar catalogando espécies e ver o feed dos seus amigos.'}
-          </ThemedText>
-
-          <View style={styles.toggle}>
-            <Segmented
-              value={mode}
-              onChange={v => router.replace(v === 'login' ? '/(auth)/login' : '/(auth)/register')}
-              options={[
-                { value: 'login', label: 'Entrar' },
-                { value: 'register', label: 'Criar conta' },
-              ]}
-            />
+          <View style={[styles.logo, { backgroundColor: theme.accent, boxShadow: `0 5px 0 ${theme.accentLip}` }]}>
+            <Ionicons name="fish" size={30} color={theme.accentText} />
           </View>
+          <ThemedText type="display" style={styles.onDark}>
+            FishDex
+          </ThemedText>
+          <ThemedText type="bodyBold" style={styles.onDarkSoft}>
+            Pegou? Registrou. Evoluiu.
+          </ThemedText>
+        </LinearGradient>
+
+        <View style={[styles.sheet, { backgroundColor: theme.backgroundElement, paddingBottom: insets.bottom + Spacing.lg }]}>
+          <Segmented
+            value={mode}
+            onChange={v => router.replace(v === 'login' ? '/(auth)/login' : '/(auth)/register')}
+            options={[
+              { value: 'login', label: 'Entrar' },
+              { value: 'register', label: 'Criar conta' },
+            ]}
+          />
+
+          <ThemedText type="title" accessibilityRole="header">
+            {isRegister ? 'Crie seu perfil de pescador' : 'Bem-vindo de volta!'}
+          </ThemedText>
 
           {error && (
-            <View style={[styles.errorCard, { borderColor: theme.primary }]}>
-              <ThemedText type="bodyBold" style={{ color: theme.primary }}>
-                {error.title}
-              </ThemedText>
-              <ThemedText type="caption" themeColor="textSecondary">
-                {error.body}
-              </ThemedText>
+            <View style={[styles.errorCard, { backgroundColor: theme.dangerSoft }]} accessibilityRole="alert">
+              <Ionicons name="alert-circle" size={22} color={theme.danger} />
+              <View style={styles.flex}>
+                <ThemedText type="bodyBold" themeColor="danger">
+                  {error.title}
+                </ThemedText>
+                <ThemedText type="caption" themeColor="text">
+                  {error.body}
+                </ThemedText>
+              </View>
             </View>
           )}
 
@@ -114,24 +122,26 @@ export function AuthView({ mode }: { mode: 'login' | 'register' }) {
             {isRegister && (
               <TextField
                 label="Nome de usuário"
+                prefix="@"
                 value={username}
                 onChangeText={t => {
                   setUsername(t);
                   setError(null);
                 }}
                 autoCapitalize="none"
+                autoCorrect={false}
                 placeholder="pescador_do_sul"
                 error={touched && !checks.username ? 'Mínimo de 3 caracteres' : undefined}
               />
             )}
             <TextField
               label="E-mail"
+              icon="mail-outline"
               value={email}
               onChangeText={t => {
                 setEmail(t);
                 setError(null);
               }}
-              glyph="square"
               autoCapitalize="none"
               keyboardType="email-address"
               autoComplete="email"
@@ -141,75 +151,52 @@ export function AuthView({ mode }: { mode: 'login' | 'register' }) {
             />
             <TextField
               label="Senha"
+              icon="lock-closed-outline"
               value={password}
               onChangeText={t => {
                 setPassword(t);
                 setError(null);
               }}
-              glyph="rounded"
               revealToggle
               autoComplete={isRegister ? 'password-new' : 'password'}
-              placeholder="••••••"
+              placeholder={isRegister ? 'Mínimo de 6 caracteres' : '••••••'}
               error={touched && !checks.password ? 'Mínimo de 6 caracteres' : undefined}
             />
           </View>
-
-          {isRegister && (
-            <ThemedText type="caption" themeColor="textFaint" style={styles.terms}>
-              Ao criar a conta você concorda com as regras de pesca responsável e o compartilhamento das capturas com
-              seus amigos.
-            </ThemedText>
-          )}
 
           <Button
             label={busy ? (isRegister ? 'Criando conta…' : 'Entrando…') : isRegister ? 'Criar conta' : 'Entrar'}
             onPress={submit}
             loading={busy}
-            style={styles.cta}
           />
 
-          <View style={styles.switchRow}>
-            <ThemedText type="caption" themeColor="textSecondary">
-              {isRegister ? 'Já tem conta?' : 'Ainda não tem conta?'}
+          {isRegister && (
+            <ThemedText type="caption" themeColor="textSecondary" style={styles.terms}>
+              Ao criar a conta você concorda com as regras de pesca responsável e com o compartilhamento das capturas com seus amigos.
             </ThemedText>
-            <Pressable
-              onPress={() => router.replace(isRegister ? '/(auth)/login' : '/(auth)/register')}
-              hitSlop={8}>
-              <ThemedText type="bodyBold" style={{ color: theme.accent }}>
-                {isRegister ? 'Entrar' : 'Criar conta'}
-              </ThemedText>
-            </Pressable>
-          </View>
+          )}
 
           {USE_MOCKS && (
-            <Button label="Explorar catálogo sem entrar" variant="ghost" onPress={guestBrowse} style={styles.guest} />
+            <Button label="Explorar sem entrar" variant="ghost" onPress={guestBrowse} />
           )}
-        </ScrollView>
-      </KeyboardAvoidingView>
-    </Screen>
+        </View>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
-  flex: { flex: 1 },
-  content: { flexGrow: 1, padding: Spacing.lg, paddingBottom: Spacing.xl },
-  brand: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
-  logo: { width: 30, height: 30, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
-  logoDot: { width: 10, height: 10, borderRadius: 999 },
-  title: { marginTop: Spacing.lg },
-  subtitle: { marginTop: 6 },
-  toggle: { marginTop: Spacing.lg },
-  errorCard: {
-    marginTop: Spacing.md,
-    padding: Spacing.md,
-    borderRadius: Radius.md,
-    borderWidth: 1,
-    backgroundColor: 'rgba(255,138,61,0.14)',
-    gap: 2,
-  },
-  fields: { marginTop: Spacing.md, gap: Spacing.sm },
-  terms: { marginTop: Spacing.sm, lineHeight: 17 },
-  cta: { marginTop: Spacing.lg },
-  switchRow: { marginTop: Spacing.md, flexDirection: 'row', gap: 6, justifyContent: 'center', alignItems: 'center' },
-  guest: { marginTop: Spacing.md },
+  flex: { flex: 1, minWidth: 0 },
+  scroll: { flexGrow: 1 },
+  hero: { paddingHorizontal: 28, paddingBottom: 56, overflow: 'hidden' },
+  ring: { position: 'absolute', right: -60, top: 40, width: 260, height: 260, borderRadius: 130, borderWidth: 2, borderStyle: 'dashed', borderColor: 'rgba(255,255,255,0.18)' },
+  heroCard: { position: 'absolute', right: 18, top: 70, width: 116, transform: [{ rotate: '12deg' }] },
+  heroArt: { height: 150 },
+  logo: { width: 56, height: 56, borderRadius: 18, alignItems: 'center', justifyContent: 'center', transform: [{ rotate: '-8deg' }], marginBottom: 14 },
+  onDark: { color: '#ffffff', fontFamily: HeadingFont },
+  onDarkSoft: { color: '#d6d0ff' },
+  sheet: { flex: 1, marginTop: -32, borderTopLeftRadius: 32, borderTopRightRadius: 32, paddingHorizontal: 22, paddingTop: 20, gap: 18 },
+  errorCard: { flexDirection: 'row', gap: 10, padding: 14, borderRadius: 16 },
+  fields: { gap: 14 },
+  terms: { textAlign: 'center' },
 });

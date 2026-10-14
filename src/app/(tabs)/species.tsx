@@ -4,18 +4,21 @@ import { useMemo, useState } from 'react';
 import { FlatList, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 
 import { useMe, useSpeciesList } from '@/api/hooks';
+import { XpHud } from '@/components/hud';
 import { Pill } from '@/components/pill';
 import { Screen } from '@/components/screen';
 import { SpeciesGridCard, SpeciesListRow } from '@/components/species-card';
-import { EmptyState, ErrorView, LoadingView } from '@/components/states';
+import { EmptyState, ErrorView, SkeletonCardGrid } from '@/components/states';
 import { ThemedText } from '@/components/themed-text';
-import { FloatingTabBarSpace, Radius, Spacing } from '@/constants/theme';
+import { FloatingTabBarSpace, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import {
   CHIP_OPTIONS,
   EMPTY_FILTER,
   FILTER_GROUPS,
+  activeFilterCount,
   filterSpecies,
+  suggestSpecies,
   type SpeciesFilter,
 } from '@/utils/species';
 
@@ -28,10 +31,11 @@ export default function CatalogScreen() {
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [view, setView] = useState<'grid' | 'list'>('grid');
 
-  const capturedIds = useMemo(
-    () => new Set((me?.catchesBySpecies ?? []).map(e => e.speciesId)),
-    [me]
-  );
+  const countById = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const e of me?.catchesBySpecies ?? []) map.set(e.speciesId, e._count);
+    return map;
+  }, [me]);
 
   const indexById = useMemo(() => {
     const map: Record<string, number> = {};
@@ -40,85 +44,82 @@ export default function CatalogScreen() {
   }, [species]);
 
   const results = useMemo(
-    () => (species ? filterSpecies(species, filter, id => capturedIds.has(id)) : []),
-    [species, filter, capturedIds]
+    () => (species ? filterSpecies(species, filter, id => countById.has(id)) : []),
+    [species, filter, countById]
   );
 
   const total = species?.length ?? 0;
-  const captured = capturedIds.size;
-  const pct = total ? Math.round((captured / total) * 100) : 0;
+  const captured = countById.size;
+  const panelCount = activeFilterCount(filter);
   const set = (patch: Partial<SpeciesFilter>) => setFilter(f => ({ ...f, ...patch }));
+  const chipCount: Record<string, number> = { Todas: total, Capturadas: captured, Faltando: total - captured };
 
   const header = (
-    <View>
-      <View style={[styles.headerBand, { backgroundColor: theme.headerBackground }]}>
-        <View style={styles.headerTop}>
-          <View>
-            <ThemedText type="caption" themeColor="textSecondary">
-              Boa pesca,
-            </ThemedText>
-            <ThemedText type="title">{me?.username?.split(' ')[0] ?? 'pescador'}</ThemedText>
-          </View>
-          <Pressable
-            onPress={() => router.push('/(tabs)/collection')}
-            style={[styles.levelPill, { backgroundColor: 'rgba(255,255,255,0.1)' }]}
-            accessibilityRole="button"
-            accessibilityLabel="Ver coleção">
-            <View style={[styles.levelDot, { borderColor: theme.accent }]} />
-            <View>
-              <ThemedText type="monoSmall" themeColor="textSecondary">
-                NÍVEL
-              </ThemedText>
-              <ThemedText type="bodyBold" style={{ color: theme.accent }}>
-                {me?.level ?? 1}
-              </ThemedText>
-            </View>
-          </Pressable>
-        </View>
+    <View style={styles.header}>
+      <XpHud />
 
-        <View style={styles.searchRow}>
-          <View style={[styles.search, { backgroundColor: 'rgba(255,255,255,0.1)' }]}>
-            <Ionicons name="search" size={15} color={theme.onDarkSecondary} />
-            <TextInput
-              value={filter.search}
-              onChangeText={t => set({ search: t })}
-              placeholder="Buscar espécie ou nome científico"
-              placeholderTextColor={theme.onDarkSecondary}
-              style={[styles.searchInput, { color: theme.onDark }]}
-            />
-          </View>
-          <Pressable
-            onPress={() => setFiltersOpen(o => !o)}
-            style={[styles.filterBtn, { backgroundColor: filtersOpen ? theme.primary : 'rgba(255,255,255,0.1)' }]}
-            accessibilityRole="button"
-            accessibilityLabel="Filtros">
-            <Ionicons name="options-outline" size={20} color={filtersOpen ? theme.primaryText : theme.onDark} />
-          </Pressable>
-        </View>
-
-        <View style={styles.progressRow}>
-          <View style={[styles.track, { backgroundColor: 'rgba(255,255,255,0.13)' }]}>
-            <View style={[styles.fill, { width: `${pct}%`, backgroundColor: theme.accent }]} />
-          </View>
-          <ThemedText type="monoSmall" themeColor="onDarkSecondary">
-            {captured} / {total} espécies
-          </ThemedText>
+      <View style={styles.titleRow}>
+        <ThemedText type="heading">Catálogo</ThemedText>
+        <View style={[styles.toggle, { backgroundColor: theme.backgroundSelected }]} accessibilityRole="radiogroup">
+          {(['grid', 'list'] as const).map(v => {
+            const on = view === v;
+            return (
+              <Pressable
+                key={v}
+                onPress={() => setView(v)}
+                style={[styles.toggleBtn, on && { backgroundColor: theme.backgroundElement, boxShadow: `0 2px 0 ${theme.border}` }]}
+                accessibilityRole="radio"
+                accessibilityState={{ selected: on }}
+                accessibilityLabel={v === 'grid' ? 'Ver em grade' : 'Ver em lista'}>
+                <Ionicons name={v === 'grid' ? 'grid' : 'list'} size={20} color={on ? theme.text : theme.textSecondary} />
+              </Pressable>
+            );
+          })}
         </View>
       </View>
 
+      <View style={[styles.search, { backgroundColor: theme.backgroundElement, boxShadow: `inset 0 0 0 2px ${theme.border}` }]}>
+        <Ionicons name="search" size={20} color={theme.textSecondary} />
+        <TextInput
+          value={filter.search}
+          onChangeText={t => set({ search: t })}
+          placeholder="Buscar espécie ou nome científico"
+          placeholderTextColor={theme.textSecondary}
+          accessibilityLabel="Buscar espécie"
+          returnKeyType="search"
+          style={[styles.searchInput, { color: theme.text }]}
+        />
+        {filter.search.length > 0 && (
+          <Pressable onPress={() => set({ search: '' })} style={styles.clear} accessibilityRole="button" accessibilityLabel="Limpar busca">
+            <Ionicons name="close-circle" size={20} color={theme.textSecondary} />
+          </Pressable>
+        )}
+      </View>
+
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chips} style={styles.chipsScroll}>
+        {CHIP_OPTIONS.map(chip => (
+          <Pill key={chip} label={chip} count={chipCount[chip]} active={filter.chip === chip} onPress={() => set({ chip })} />
+        ))}
+        <Pill
+          label={panelCount ? `Filtros · ${panelCount}` : 'Filtros'}
+          active={filtersOpen || panelCount > 0}
+          trailingIcon={filtersOpen ? 'chevron-up' : 'chevron-down'}
+          onPress={() => setFiltersOpen(o => !o)}
+        />
+      </ScrollView>
+
       {filtersOpen && (
-        <View style={[styles.filterPanel, { backgroundColor: theme.backgroundElement, borderColor: theme.border }]}>
+        <View style={[styles.panel, { backgroundColor: theme.backgroundElement, boxShadow: `inset 0 0 0 2px ${theme.border}, 0 4px 0 ${theme.border}` }]}>
           {FILTER_GROUPS.map(group => (
-            <View key={group.key} style={styles.filterGroup}>
-              <ThemedText type="mono" themeColor="textSecondary" uppercase>
+            <View key={group.key} style={styles.group}>
+              <ThemedText type="mono" uppercase>
                 {group.label}
               </ThemedText>
-              <View style={styles.wrapRow}>
+              <View style={styles.wrap}>
                 {group.options.map(opt => (
                   <Pill
                     key={opt}
                     label={opt}
-                    shape="rounded"
                     active={filter[group.key] === opt}
                     onPress={() => set({ [group.key]: opt } as Partial<SpeciesFilter>)}
                   />
@@ -127,141 +128,116 @@ export default function CatalogScreen() {
             </View>
           ))}
           <Pressable
-            onPress={() => setFilter(EMPTY_FILTER)}
-            style={[styles.clearBtn, { backgroundColor: theme.background }]}>
-            <ThemedText type="bodyBold">Limpar filtros</ThemedText>
+            onPress={() => setFilter(f => ({ ...EMPTY_FILTER, search: f.search, chip: f.chip }))}
+            style={styles.reset}
+            accessibilityRole="button">
+            <ThemedText type="link">Limpar filtros</ThemedText>
           </Pressable>
         </View>
       )}
-
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.chipsRow}>
-        {CHIP_OPTIONS.map(chip => (
-          <Pill key={chip} label={chip} active={filter.chip === chip} onPress={() => set({ chip })} />
-        ))}
-      </ScrollView>
-
-      <View style={styles.toolbar}>
-        <View style={styles.toolbarTitle}>
-          <ThemedText type="subtitle">Catálogo</ThemedText>
-          <ThemedText type="mono" themeColor="textFaint">
-            {results.length} de {total}
-          </ThemedText>
-        </View>
-        <View style={[styles.viewToggle, { backgroundColor: theme.backgroundSelected }]}>
-          {(['grid', 'list'] as const).map(v => (
-            <Pressable
-              key={v}
-              onPress={() => setView(v)}
-              style={[styles.viewBtn, view === v && { backgroundColor: theme.headerBackground }]}
-              accessibilityRole="button"
-              accessibilityLabel={v === 'grid' ? 'Grade' : 'Lista'}>
-              <Ionicons
-                name={v === 'grid' ? 'grid' : 'reorder-three'}
-                size={16}
-                color={view === v ? theme.onDark : theme.textFaint}
-              />
-            </Pressable>
-          ))}
-        </View>
-      </View>
     </View>
   );
 
-  if (isLoading) {
-    return (
-      <Screen padded={false} topColor="headerBackground">
-        <LoadingView label="Carregando catálogo…" />
-      </Screen>
-    );
-  }
+  const empty = (() => {
+    if (filter.search.trim()) {
+      const suggestions = suggestSpecies(species ?? [], filter.search);
+      return (
+        <EmptyState
+          icon="search"
+          title="Nenhum peixe com esse nome"
+          subtitle="Confira a grafia ou busque pelo nome científico.">
+          {suggestions.length > 0 && (
+            <View style={styles.suggest}>
+              <ThemedText type="label" themeColor="textSecondary">
+                Você quis dizer
+              </ThemedText>
+              <View style={styles.wrap}>
+                {suggestions.map(s => (
+                  <Pill key={s.id} label={s.name} onPress={() => set({ search: s.name })} />
+                ))}
+              </View>
+            </View>
+          )}
+        </EmptyState>
+      );
+    }
+    if (filter.chip === 'Capturadas' && captured === 0) {
+      return (
+        <EmptyState
+          icon="add"
+          title="Nenhuma carta ainda"
+          subtitle="Registre sua primeira captura para ganhar a carta da espécie e seus primeiros XP."
+          actionLabel="Registrar primeira captura"
+          onAction={() => router.push('/(tabs)/new-catch')}
+        />
+      );
+    }
+    return <EmptyState icon="funnel-outline" title="Nada por aqui" subtitle="Nenhuma espécie com esses filtros." />;
+  })();
+
   if (isError) {
     return (
-      <Screen padded={false} topColor="headerBackground">
+      <Screen padded={false}>
         <ErrorView onRetry={refetch} />
       </Screen>
     );
   }
 
   return (
-    <Screen padded={false} topColor="headerBackground">
-      <FlatList
-        key={view}
-        data={results}
-        keyExtractor={item => item.id}
-        numColumns={view === 'grid' ? 2 : 1}
-        columnWrapperStyle={view === 'grid' ? styles.column : undefined}
-        ListHeaderComponent={header}
-        renderItem={({ item }) =>
-          view === 'grid' ? (
-            <SpeciesGridCard
-              species={item}
-              index={indexById[item.id]}
-              captured={capturedIds.has(item.id)}
-            />
-          ) : (
-            <View style={styles.listPad}>
-              <SpeciesListRow
+    <Screen padded={false}>
+      {isLoading ? (
+        <View>
+          {header}
+          <SkeletonCardGrid />
+        </View>
+      ) : (
+        <FlatList
+          key={view}
+          data={results}
+          keyExtractor={item => item.id}
+          numColumns={view === 'grid' ? 2 : 1}
+          columnWrapperStyle={view === 'grid' ? styles.column : undefined}
+          ListHeaderComponent={header}
+          keyboardShouldPersistTaps="handled"
+          renderItem={({ item }) =>
+            view === 'grid' ? (
+              <SpeciesGridCard
                 species={item}
                 index={indexById[item.id]}
-                captured={capturedIds.has(item.id)}
+                captured={countById.has(item.id)}
+                captureCount={countById.get(item.id)}
               />
-            </View>
-          )
-        }
-        ItemSeparatorComponent={() => <View style={{ height: 12 }} />}
-        contentContainerStyle={styles.listContent}
-        ListEmptyComponent={
-          <EmptyState title="Nada encontrado" subtitle="Ajuste a busca ou os filtros." />
-        }
-      />
+            ) : (
+              <View style={styles.listPad}>
+                <SpeciesListRow species={item} index={indexById[item.id]} captured={countById.has(item.id)} />
+              </View>
+            )
+          }
+          ItemSeparatorComponent={() => <View style={{ height: 12 }} />}
+          contentContainerStyle={styles.listContent}
+          ListEmptyComponent={empty}
+        />
+      )}
     </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  listContent: { paddingBottom: FloatingTabBarSpace + Spacing.xl },
-  listPad: { paddingHorizontal: Spacing.md },
-  column: { gap: 12, paddingHorizontal: Spacing.md },
-  headerBand: {
-    paddingHorizontal: Spacing.md,
-    paddingTop: Spacing.xs,
-    paddingBottom: Spacing.md,
-    borderBottomLeftRadius: 26,
-    borderBottomRightRadius: 26,
-  },
-  headerTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  levelPill: { flexDirection: 'row', alignItems: 'center', gap: 8, borderRadius: Radius.pill, padding: 6, paddingRight: 12 },
-  levelDot: { width: 28, height: 28, borderRadius: 14, borderWidth: 1.5, backgroundColor: '#0a3d4a' },
-  searchRow: { flexDirection: 'row', gap: 9, marginTop: Spacing.md },
-  search: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 9, height: 46, borderRadius: 15, paddingHorizontal: 14 },
-  searchInput: { flex: 1, fontSize: 13.5, fontWeight: '600' },
-  filterBtn: { width: 46, height: 46, borderRadius: 15, alignItems: 'center', justifyContent: 'center' },
-  progressRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 14 },
-  track: { flex: 1, height: 6, borderRadius: Radius.pill, overflow: 'hidden' },
-  fill: { height: '100%', borderRadius: Radius.pill },
-  filterPanel: {
-    margin: Spacing.md,
-    marginBottom: 0,
-    padding: Spacing.md,
-    borderRadius: Radius.lg,
-    borderWidth: 1,
-    gap: 14,
-  },
-  filterGroup: { gap: 8 },
-  wrapRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 7 },
-  clearBtn: { height: 40, borderRadius: 13, alignItems: 'center', justifyContent: 'center' },
-  chipsRow: { gap: 8, paddingHorizontal: Spacing.md, paddingVertical: 14 },
-  toolbar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: Spacing.md + 2,
-    paddingBottom: 8,
-  },
-  toolbarTitle: { flexDirection: 'row', alignItems: 'baseline', gap: 8 },
-  viewToggle: { flexDirection: 'row', gap: 4, padding: 3, borderRadius: 11 },
-  viewBtn: { width: 30, height: 26, borderRadius: 8, alignItems: 'center', justifyContent: 'center' },
+  header: { paddingHorizontal: 20, paddingTop: Spacing.sm, paddingBottom: Spacing.md, gap: 14 },
+  titleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 4 },
+  toggle: { flexDirection: 'row', padding: 3, borderRadius: 14 },
+  toggleBtn: { width: 44, height: 40, borderRadius: 11, alignItems: 'center', justifyContent: 'center' },
+  search: { flexDirection: 'row', alignItems: 'center', gap: 10, minHeight: 50, borderRadius: 16, paddingLeft: 14, paddingRight: 4 },
+  searchInput: { flex: 1, fontSize: 16, fontWeight: '500', paddingVertical: 12 },
+  clear: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
+  chipsScroll: { marginHorizontal: -20 },
+  chips: { gap: 8, paddingHorizontal: 20, paddingVertical: 2 },
+  panel: { borderRadius: 20, padding: Spacing.md, gap: 14, marginBottom: 4 },
+  group: { gap: 8 },
+  wrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  reset: { alignSelf: 'flex-start', minHeight: 44, justifyContent: 'center' },
+  suggest: { alignItems: 'center', gap: 8, marginTop: 8 },
+  listContent: { paddingBottom: FloatingTabBarSpace + Spacing.xl, flexGrow: 1 },
+  listPad: { paddingHorizontal: 20 },
+  column: { gap: 12, paddingHorizontal: 20 },
 });

@@ -19,7 +19,6 @@ import { XpBar } from '@/components/xp-bar';
 import { FloatingTabBarSpace, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { formatMonthYear } from '@/utils/format';
-import { photoUri } from '@/utils/photo';
 
 export default function UserProfileScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -124,7 +123,7 @@ export default function UserProfileScreen() {
                       accessibilityLabel={`Ver captura de ${s?.name ?? 'espécie'}`}>
                       <Stripes
                         tone={(s?.tone as Tone) ?? (['#0a3d4a', '#073040'] as Tone)}
-                        imageUrl={photoUri(item.photoUrl)}
+                        imageUrl={item.photoUrl}
                         radius={12}
                         style={styles.photo}
                       />
