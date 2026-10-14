@@ -13,8 +13,10 @@ import { useColorScheme } from 'react-native';
 import { queryClient } from '@/api/query-client';
 import { AuthProvider, useAuth } from '@/auth/auth-context';
 import { Colors } from '@/constants/theme';
+import { registerServiceWorker } from '@/utils/pwa';
 
 SplashScreen.preventAutoHideAsync();
+registerServiceWorker();
 
 function RootNavigator() {
   const { isLoading, isAuthenticated } = useAuth();
