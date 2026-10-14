@@ -1,7 +1,7 @@
 import { request } from '@/api/client';
 import { USE_MOCKS } from '@/api/config';
 import { mockCatches } from '@/api/mock/store';
-import type { Catch } from '@/api/types';
+import type { Catch, FeedCatch } from '@/api/types';
 
 export interface CreateCatchInput {
   speciesId: string;
@@ -17,12 +17,14 @@ export function createCatch(data: CreateCatchInput) {
   return request<Catch>('/catches', { method: 'POST', body: data });
 }
 
-export function getMyCatches() {
+// O backend enriquece as capturas do próprio usuário com autor/reações
+// (mesmo shape do feed) — por isso FeedCatch em vez de Catch.
+export function getMyCatches(): Promise<FeedCatch[]> {
   if (USE_MOCKS) return mockCatches.getMyCatches();
-  return request<Catch[]>('/catches/me');
+  return request<FeedCatch[]>('/catches/me');
 }
 
-export function getCatch(id: string) {
+export function getCatch(id: string): Promise<FeedCatch> {
   if (USE_MOCKS) return mockCatches.getCatch(id);
-  return request<Catch>(`/catches/${id}`);
+  return request<FeedCatch>(`/catches/${id}`);
 }

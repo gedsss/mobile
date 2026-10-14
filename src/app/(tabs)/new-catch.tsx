@@ -9,6 +9,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import * as catchesApi from '@/api/catches';
 import { ApiError } from '@/api/client';
+import * as uploadsApi from '@/api/uploads';
 import { useMe, useSpeciesList } from '@/api/hooks';
 import type { Species } from '@/api/types';
 import { RarityPill } from '@/components/badge';
@@ -83,9 +84,10 @@ export default function NewCatchScreen() {
       const cm = Number(lengthCm.replace(',', '.'));
       setXpBefore(me?.xp ?? 0);
       setWasNew(isNew);
+      const { url: photoUrl } = await uploadsApi.uploadPhoto(photoUri);
       await catchesApi.createCatch({
         speciesId: species.id,
-        photoUrl: photoUri,
+        photoUrl,
         capturedAt: new Date().toISOString(),
         weightGrams: weightKg && !Number.isNaN(kg) ? Math.round(kg * 1000) : undefined,
         lengthCm: lengthCm && !Number.isNaN(cm) ? cm : undefined,
@@ -95,6 +97,8 @@ export default function NewCatchScreen() {
         queryClient.invalidateQueries({ queryKey: ['me'] }),
         queryClient.invalidateQueries({ queryKey: ['feed'] }),
         queryClient.invalidateQueries({ queryKey: ['my-catches'] }),
+        queryClient.invalidateQueries({ queryKey: ['user-catches'] }),
+        queryClient.invalidateQueries({ queryKey: ['user'] }),
       ]);
       setSuccess(true);
     } catch (err) {
