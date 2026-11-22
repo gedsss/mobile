@@ -28,6 +28,14 @@ export function useUserAchievements(id: string | undefined) {
   });
 }
 
+export function useUserCatches(id: string | undefined) {
+  return useQuery({
+    queryKey: ['user-catches', id],
+    queryFn: () => usersApi.getUserCatches(id as string),
+    enabled: !!id,
+  });
+}
+
 export function useSpeciesList() {
   return useQuery({ queryKey: ['species'], queryFn: speciesApi.getSpeciesList, staleTime: 5 * 60_000 });
 }

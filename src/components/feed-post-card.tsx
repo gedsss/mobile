@@ -1,4 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
+import { useQueryClient } from '@tanstack/react-query';
 import { router } from 'expo-router';
 import { useMemo, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
@@ -18,6 +19,7 @@ import { formatRelativeDate, formatWeight } from '@/utils/format';
 export function FeedPostCard({ item }: { item: FeedCatch }) {
   const theme = useTheme();
   const rarity = useRarity();
+  const queryClient = useQueryClient();
   const speciesMap = useSpeciesMap();
   const species = speciesMap[item.speciesId];
 
@@ -39,15 +41,20 @@ export function FeedPostCard({ item }: { item: FeedCatch }) {
     .slice(0, 3);
   if (shown.length === 0) shown.push('FIRE');
 
+  const syncFeed = () => {
+    queryClient.invalidateQueries({ queryKey: ['feed'] });
+    queryClient.invalidateQueries({ queryKey: ['catch', item.id] });
+  };
+
   const react = (code: ReactionEmoji) => {
     setPickerOpen(false);
     if (mine === code) {
       setMine(null);
-      reactionsApi.removeReaction(item.id).catch(() => setMine(code));
+      reactionsApi.removeReaction(item.id).then(syncFeed).catch(() => setMine(code));
     } else {
       const previous = mine;
       setMine(code);
-      reactionsApi.react(item.id, code).catch(() => setMine(previous));
+      reactionsApi.react(item.id, code).then(syncFeed).catch(() => setMine(previous));
     }
   };
 

@@ -1,6 +1,7 @@
 # FishDex — App Mobile
 
-App React Native (Expo + TypeScript + Expo Router) para o backend em `../` (FishDex API). Só para celular — sem layout desktop dedicado.
+App React Native (Expo + TypeScript + Expo Router) para a FishDex API (backend em
+`../../PROJETO-INTEGRADOR BACK 2026-2`). Só para celular — sem layout desktop dedicado.
 
 O visual segue o protótipo do Claude Design ("FishDex Mobile App Design"): tema
 água-profunda com acento laranja/âmbar (claro/escuro adaptativos, paleta em
@@ -17,34 +18,52 @@ placeholder das fotos (`src/components/stripes.tsx`) e barra de abas flutuante.
 - `@expo-google-fonts/baloo-2` (títulos) + fonte do sistema (corpo de texto)
 - `@expo/vector-icons` (Ionicons)
 
-## Rodando
+## Rodando (contra o backend)
 
-### Modo demonstração (sem backend, sem Postgres)
+1. **Backend no ar** — ver `../../PROJETO-INTEGRADOR BACK 2026-2/INTEGRACAO.md`
+   (resumo: `docker compose up -d`, `npx prisma migrate deploy`, `npx tsx prisma/seed.ts`, `npm run dev`).
 
-O `.env` já vem com `EXPO_PUBLIC_USE_MOCKS=true`. Nesse modo, todo o app funciona com dados fictícios guardados em memória (12 espécies do protótipo com ficha completa, 3 amigos + 2 pedidos pendentes, capturas próprias e do feed com reações) — dá pra logar, navegar por todas as telas, registrar uma captura nova (foto real da câmera/galeria) e ver XP/nível subindo, sem precisar do backend nem do Docker rodando. O login vem pré-preenchido (qualquer e-mail/senha serve; "Explorar catálogo sem entrar" faz login de convidado). O estado reseta a cada reload do app (`r` no terminal, ou fechar/abrir de novo).
+2. Configurar o `.env` desta pasta:
 
-```bash
-npm install
-npm start        # depois: 'w' pra abrir no navegador, ou escaneie o QR com o app Expo Go
-```
+   ```bash
+   cp .env.example .env
+   ```
 
-### Modo real (contra o backend)
+   ```bash
+   EXPO_PUBLIC_API_URL=http://SEU-IP:3000   # IP da máquina do backend na rede local
+   EXPO_PUBLIC_USE_MOCKS=false              # false = fala com o backend
+   ```
 
-1. Backend rodando (`docker compose up -d`, `npm run dev` na raiz do projeto).
-2. No `.env` da pasta `mobile/`: ajuste `EXPO_PUBLIC_API_URL` para o IP da sua máquina na rede local (não `localhost` — o celular físico via Expo Go não enxerga o `localhost` do computador; confirme o IP com `ipconfig`) e mude `EXPO_PUBLIC_USE_MOCKS` para `false`.
-3. `npm install`
-4. `npm start` (ou `npm run web`, `npm run android`, `npm run ios`)
-5. Escaneie o QR code com o app **Expo Go** no celular, ou pressione `w` no terminal para abrir no navegador.
+   Descubra o IP com `ipconfig` (Windows). **Não use `localhost`** se for abrir no
+   celular físico — o Expo Go não enxerga o localhost do PC. No navegador, na mesma
+   máquina do backend, `http://localhost:3000` serve.
+
+3. Rodar:
+
+   ```bash
+   npm install
+   npm start        # 'w' abre no navegador; ou escaneie o QR com o app Expo Go
+   ```
+
+4. Login demo (criado pelo seed do backend): **`gedson@fishdex.app` / `pescaria123`**.
+   Esse usuário já tem amigos (Marina, Caio), capturas e feed com conteúdo.
+
+### Modo demo (sem backend)
+
+Para navegar pelas telas sem subir nada: `EXPO_PUBLIC_USE_MOCKS=true` no `.env`.
+O app passa a usar dados fictícios em memória (`src/api/mock/`, 12 espécies com ficha
+completa, 3 amigos, capturas e reações), qualquer e-mail/senha loga, e aparece o
+botão "Explorar catálogo sem entrar". O estado reseta a cada reload.
 
 ## Telas
 
-Onboarding (3 slides, aparece uma vez) → Entrar/Criar conta (toggle numa tela só) →
-Catálogo (busca + filtros + grade/lista) → Ficha da espécie (ficha técnica, iscas,
-mapa de ocorrência, seus registros) → Novo registro (foto + espécie + medidas, com
-sheet de sucesso e XP) → Coleção/Dex (grade numerada por raridade) → Feed (abas
-Amigos/Minhas, reações inline, banner de pedidos de amizade) → Perfil (XP,
-conquistas com progresso, diário). Amigos é uma tela acessada pelo feed e pelo
-perfil, não é mais uma aba.
+Onboarding (3 slides, uma vez) → Entrar/Criar conta → Catálogo (busca + filtros +
+grade/lista) → Ficha da espécie (ficha técnica, iscas, mapa de ocorrência, seus
+registros) → Novo registro (foto + espécie + medidas, sobe a foto pro servidor,
+sheet de sucesso com XP) → Coleção/Dex (grade numerada por raridade) → Feed (abas
+Amigos/Minhas, reações inline com contador, banner de pedidos) → Perfil (XP,
+conquistas com progresso, diário) → Perfil de amigo (nível, conquistas, galeria de
+capturas, contagem por espécie). Amigos é uma tela acessada pelo feed e pelo perfil.
 
 ## Estrutura
 
@@ -52,29 +71,35 @@ perfil, não é mais uma aba.
 src/
   app/            rotas (expo-router)
     (auth)/       onboarding, login, register — visível quando deslogado
-    (tabs)/       species (Catálogo), feed, new-catch (＋), collection (Coleção), profile
+    (tabs)/       species (Catálogo), feed, new-catch (＋), collection, profile
     species/[id], catch/[id], user/[id], friends/index, friends/add
   api/            client HTTP (fetch), um módulo por recurso, hooks de react-query
-    mock/         catálogo + capturas fictícias (portados do protótipo)
+    mock/         catálogo + capturas fictícias (só quando EXPO_PUBLIC_USE_MOCKS=true)
   auth/           AuthContext (sessão + token)
-  components/     reutilizáveis (Button, Card, Stripes, Pill, FeedPostCard, SuccessSheet…)
+  components/     reutilizáveis (Button, Card, Stripes, Pill, FeedPostCard, ReactionBar…)
   constants/      tokens de design (cores, raridade, habitat, tipografia, espaçamento)
   hooks/          useTheme/useRarity/useHabitat, useOnboarding
-  utils/          format (datas/medidas), species (nº do Dex + filtros), storage
+  utils/          format (datas/medidas), species (nº do Dex + filtros), photo, storage
 ```
 
-O onboarding usa uma flag persistida (`onboardingStorage` em `utils/storage.ts`) —
-para revê-lo, limpe os dados do app / `localStorage` no navegador.
+Cada `src/api/<recurso>.ts` tem o mesmo formato: se `USE_MOCKS`, chama o mock;
+senão, `request()` (ou `uploadRequest()` para o multipart) contra `EXPO_PUBLIC_API_URL`.
+`src/utils/photo.ts` (`photoUri`) prefixa a base da API nos caminhos `/uploads/...`
+que o backend devolve.
 
-## Limitações conhecidas (dependem do backend atual)
+## Limitações conhecidas
 
-- **Sem upload de foto real**: não existe endpoint `POST /uploads` no backend ainda. A tela de nova captura usa a URI local da foto escolhida como `photoUrl` — funciona para o fluxo completo (XP, nível, feed), mas a imagem só é visível no aparelho onde foi tirada, não é enviada a um servidor. Quando a estratégia de storage for definida (`CLAUDE.md`, decisão em aberto), trocar isso é uma mudança pequena e isolada em `src/app/(tabs)/new-catch.tsx`.
-- **Reações sem contagem agregada (modo real)**: o backend não tem um `GET` para ler reações existentes numa captura. No modo demo o mock semeia contadores por post e o feed os mostra ao vivo; no modo real só a reação feita na sessão atual fica destacada, sem contadores.
-- **Ficha técnica da espécie parcial no modo real**: família, habitat, tamanho médio, dieta, iscas e mapa de ocorrência vêm dos campos opcionais em `Species` que só o mock preenche. Contra o backend, essas seções somem e a ficha mostra só nome/científico/dificuldade/baseXp/descrição.
-- **Onboarding e "Explorar sem entrar"**: o botão de convidado só aparece no modo demo (faz um login fake); o onboarding aparece uma vez por dispositivo (flag em `expo-secure-store`/`localStorage`).
-- **Adicionar amigo é por código (ID)**: não existe endpoint de busca de usuário por nome. A tela "Adicionar amigo" usa o próprio `id` do usuário como código para compartilhar/colar, em vez de busca por username.
-- **Perfil de amigo não lista as fotos das capturas**: só existe `GET /catches/me` (capturas do próprio usuário logado) — não há `GET /users/:id/catches`. O perfil de um amigo mostra nível, XP, conquistas e contagem por espécie (todos esses dados vêm de `GET /users/:id`), mas não uma galeria de fotos. Adicionar essa listagem exigiria um novo endpoint no backend.
-- **Catálogo de espécies pode estar vazio**: `prisma/seed.ts` hoje só popula `Achievement`; nenhuma `Species` é criada automaticamente. Sem espécies cadastradas, a Pokédex e o seletor de espécie na nova captura ficam vazios — cadastre algumas manualmente (Prisma Studio: `npx prisma studio`) para testar o fluxo de captura.
-- **Data da captura é sempre "agora"**: o campo "Data" no formulário é só leitura ("hoje") — não há seletor de data nativo; a captura é registrada com o horário do envio.
-- **Peso em kg na UI, gramas na API**: o formulário pede o peso em kg (como no protótipo) e converte para `weightGrams` (× 1000) ao enviar.
-- **Localização é só texto livre**: por causa da decisão de privacidade em aberto no `CLAUDE.md` sobre coordenadas exatas, o app não captura GPS — só um campo de texto opcional (`locationName`).
+- **Data da captura é sempre "agora"**: o campo "Data" no formulário é só leitura — não
+  há seletor de data nativo; a captura é registrada com o horário do envio.
+- **Peso em kg na UI, gramas na API**: o formulário pede kg e converte para
+  `weightGrams` (× 1000) ao enviar.
+- **Localização é só texto livre** (`locationName`): por decisão de privacidade em
+  aberto no `CLAUDE.md` do backend, o app não captura GPS.
+- **Bloqueio de amizade** existe na API (`PATCH /friendships/:id/block`) mas as
+  regras exatas do estado `BLOCKED` ainda estão em aberto no backend.
+- **Fotos ficam no disco do servidor de dev** (`uploads/` do backend, gitignorado) —
+  some se o servidor for recriado. Para produção, trocar por bucket externo é uma
+  mudança isolada em `src/api/uploads.ts` + módulo `uploads` do backend.
+- **CORS**: no navegador (`npm run web`), o backend precisa liberar a origem do Expo
+  (`localhost:8081`) — já está configurado (`app.register(cors, …)` com todos os
+  métodos). No celular (Expo Go) não há CORS.

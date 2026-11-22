@@ -155,6 +155,13 @@ export const mockUsers = {
       unlockedAt: new Date().toISOString(),
     }));
   },
+  async getUserCatches(id: string): Promise<FeedCatch[]> {
+    await delay();
+    return catches
+      .filter(item => item.userId === id)
+      .sort((a, b) => b.capturedAt.localeCompare(a.capturedAt))
+      .map(toFeedCatch);
+  },
 };
 
 export const mockSpecies = {

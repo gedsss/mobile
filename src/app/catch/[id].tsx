@@ -33,7 +33,7 @@ export default function CatchDetailScreen() {
   return (
     <Screen padded={false}>
       <ScrollView>
-        <Stripes tone={tone} imageUrl={item.photoUrl || null} style={styles.photo} />
+        <Stripes tone={tone} imageUrl={item.photoUrl} style={styles.photo} />
 
         <View style={styles.content}>
           <Pressable
@@ -69,7 +69,11 @@ export default function CatchDetailScreen() {
 
           <View style={styles.reactionsSection}>
             <ThemedText type="subtitle">Reações</ThemedText>
-            <ReactionBar catchId={item.id} />
+            <ReactionBar
+              catchId={item.id}
+              initialReaction={item.myReaction ?? null}
+              counts={item.reactionCounts}
+            />
           </View>
         </View>
       </ScrollView>
