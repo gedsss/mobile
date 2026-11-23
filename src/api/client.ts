@@ -34,7 +34,11 @@ export async function request<T>(
 ): Promise<T> {
   const { method = 'GET', body, auth = true } = options;
 
-  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  // Content-Type só quando há corpo: o Fastify responde 400
+  // (FST_ERR_CTP_EMPTY_JSON_BODY) para JSON declarado sem corpo — era o que
+  // quebrava os PATCH sem body (aceitar/bloquear amizade).
+  const headers: Record<string, string> = {};
+  if (body !== undefined) headers['Content-Type'] = 'application/json';
   if (auth && authToken) headers.Authorization = `Bearer ${authToken}`;
 
   const response = await fetch(`${API_URL}${path}`, {
